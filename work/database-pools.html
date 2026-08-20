@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Letting idle resources sleep, safely — Ishtiaq Hossain</title>
+<meta name="description" content="Releasing what is not being used, and bringing it back so transparently that nothing notices.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../styles.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><path fill='%23008080' d='M0 0H100V100H58.018V83.964H83.964V58.018H58.018V41.982H83.964V16.036H16.036V41.982H41.982V58.018H16.036V83.964H41.982V100H0Z'/></svg>">
+</head>
+<body>
+
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="site-head">
+  <div class="wrap head-inner">
+    <div class="brand">
+      <span class="brand__mark" aria-hidden="true"></span>
+      <a class="brand__name" href="../index.html">Ishtiaq Hossain</a>
+    </div>
+    <nav class="nav" aria-label="Primary">
+      <a href="../index.html#work">Work</a>
+      <a href="../index.html#experience">Experience</a>
+      <a href="../index.html#stack">Stack</a>
+    </nav>
+    <a class="btn btn--accent btn--sm"
+       href="https://calendar.app.google/BoDFLEuxzedu7jU39"
+       target="_blank" rel="noopener noreferrer">Book a call</a>
+  </div>
+</header>
+
+<main id="main">
+
+  <article class="cs">
+    <header class="cs-head wrap">
+      <p class="eyebrow">Case study 04 — Anlytic</p>
+      <h1 class="cs-title">Letting idle resources sleep, safely</h1>
+      <p class="cs-lede">Releasing what is not being used, and bringing it back so transparently that nothing notices.</p>
+      <ul class="tags"><li>Hands-on engineer</li><li>Go</li><li>PostgreSQL</li><li>Redis</li></ul>
+    </header>
+
+    <div class="wrap">
+      <div class="cs-facts">
+          <div class="cs-fact"><p class="cs-fact__val">Idle</p><p class="cs-fact__label">released automatically</p></div>
+          <div class="cs-fact"><p class="cs-fact__val">1</p><p class="cs-fact__label">route back</p></div>
+          <div class="cs-fact"><p class="cs-fact__val">Safe</p><p class="cs-fact__label">across replicas</p></div>
+      </div>
+
+      <section class="cs-block">
+        <h2 class="cs-h">The problem</h2>
+        <p>Idle sources held resources open indefinitely and were billed for it. Reclaiming them is the easy half. Bringing them back is the hard one: it has to happen from any entry point, under concurrency, across replicas, without anyone seeing an error.</p>
+      </section>
+
+      <section class="cs-block">
+        <h2 class="cs-h">How it fits together</h2>
+      </section>
+
+      <figure class="cs-fig">
+        <svg class="dg" viewBox="0 0 720 210" role="img" aria-labelledby="dg-database-pools">
+          <title id="dg-database-pools">One path back from idle</title>
+          <defs>
+      <marker id="a" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto">
+        <path d="M0 0 L8 4 L0 8 z" class="head"/></marker>
+      <marker id="ak" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto">
+        <path d="M0 0 L8 4 L0 8 z" class="head--k"/></marker>
+    </defs>
+          <circle cx="38" cy="40" r="20" class="sh"/><text x="38" y="44" text-anchor="middle" class="s">a</text><circle cx="38" cy="100" r="20" class="sh"/><text x="38" y="104" text-anchor="middle" class="s">b</text><circle cx="38" cy="160" r="20" class="sh"/><text x="38" y="164" text-anchor="middle" class="s">c</text><path d="M60 46 L134 92" class="ln flow" marker-end="url(#a)"/><path d="M60 100 H134" class="ln flow" marker-end="url(#a)"/><path d="M60 154 L134 108" class="ln flow" marker-end="url(#a)"/><polygon points="212,52.0 287.0,100 212,148.0 137.0,100" class="sh"/><text x="212" y="96" text-anchor="middle" class="t">already warm?</text><path d="M280 76 L340 48" class="ln flow" marker-end="url(#a)"/><rect x="346" y="22" width="128" height="50" rx="7" class="sh--g"/><text x="410" y="52" text-anchor="middle" class="t">use it</text><path d="M280 124 L340 152" class="ln--k flow" marker-end="url(#ak)"/><polygon points="346.0,152 374.8,124.0 445.2,124.0 474.0,152 445.2,180.0 374.8,180.0" class="sh--k" class="sh--k pulse"/><text x="410" y="150" text-anchor="middle" class="k">one wins</text><text x="410" y="166" text-anchor="middle" class="s">the rest wait</text><path d="M474 152 H524" class="ln--k flow" marker-end="url(#ak)"/><path d="M530 131 a53.0 7 0 0 1 106 0 v42 a53.0 7 0 0 1 -106 0 z" class="sh"/><path d="M530 131 a53.0 7 0 0 0 106 0" class="sh" fill="none"/><text x="583" y="158" text-anchor="middle" class="t">restored</text><text x="300" y="190" text-anchor="middle" class="s">every caller takes the same route</text>
+        </svg>
+        <figcaption>Callers do not each solve this. They all arrive at the same door, and only one of them does the work.</figcaption>
+      </figure>
+
+      <section class="cs-block">
+        <h2 class="cs-h">What I did</h2>
+        <div class="cs-step">
+          <h3>Track, then release</h3>
+          <p>Activity is recorded per source. Quiet ones are marked and their resources released, while the data itself is left completely alone.</p>
+        </div>
+        <div class="cs-step">
+          <h3>One route back</h3>
+          <p>Resume is centralised behind a single call, so every kind of request behaves identically. A warm connection passes straight through and costs nothing.</p>
+        </div>
+        <div class="cs-step">
+          <h3>One winner</h3>
+          <p>When several replicas arrive at once, coordination ensures one does the work and the others wait for its result rather than repeating it.</p>
+        </div>
+      </section>
+
+      <section class="cs-block">
+        <h2 class="cs-h">The hard part</h2>
+        <p class="cs-pull">One route, not several. The temptation is to handle resume wherever each caller happens to need it, which produces four implementations and three of them are subtly wrong.</p>
+        <p class="cs-note">This releases and restores connection resources. The underlying data is never stopped or removed.</p>
+      </section>
+
+      <section class="cs-block">
+        <h2 class="cs-h">Stack</h2>
+        <ul class="tags tags--lg"><li>Go</li><li>PostgreSQL</li><li>Redis</li><li>Kubernetes</li></ul>
+        <p class="cs-note">Written at the level the reasoning survives. Internal
+        specifics are left out on purpose.</p>
+      </section>
+
+      <nav class="cs-nav" aria-label="Case studies">
+        <a class="cs-nav__link" href="connectors.html">← Finishing a job after the user has gone</a>
+        <a class="cs-nav__link cs-nav__link--next" href="table-actions.html">Running one large request in parallel →</a>
+      </nav>
+
+      <p class="cs-back"><a href="../index.html#work">← All work</a></p>
+    </div>
+  </article>
+
+</main>
+
+<section class="cta">
+  <div class="wrap cta__inner">
+    <p class="eyebrow eyebrow--invert">Next step</p>
+    <h2 class="cta__title">Got something stuck?<br>Let's look at it together.</h2>
+    <p class="cta__body">Send the shape of the problem — a repo, a diagram, or three paragraphs of frustration. I'll reply with what I'd do first and what it would take.</p>
+    <div class="cta__actions">
+      <a class="btn btn--accent btn--lg" href="mailto:ih.tonmoy@gmail.com">ih.tonmoy@gmail.com</a>
+      <a class="btn btn--outline btn--lg" href="tel:+8801622700036">+880 16227 00036</a>
+    </div>
+  </div>
+</section>
+
+<footer class="site-foot">
+  <div class="wrap foot__grid">
+    <div class="foot__brand">
+      <p class="foot__name">Ishtiaq Hossain</p>
+      <p class="foot__role">Fullstack Developer · Dhaka, Bangladesh</p>
+    </div>
+    <nav class="foot__nav" aria-label="Footer">
+      <p class="foot__label">Sections</p>
+      <a href="../index.html#work">Work</a>
+      <a href="../index.html#experience">Experience</a>
+      <a href="../index.html#stack">Stack</a>
+    </nav>
+    <div class="foot__nav">
+      <p class="foot__label">Elsewhere</p>
+      <a href="https://ishtiaq.dev">ishtiaq.dev</a>
+      <a href="mailto:ih.tonmoy@gmail.com">Email</a>
+      <a href="tel:+8801622700036">Phone</a>
+    </div>
+    <p class="foot__copy">© 2026 Ishtiaq Hossain. Built with hand-written HTML and CSS.</p>
+  </div>
+</footer>
+
+</body>
+</html>

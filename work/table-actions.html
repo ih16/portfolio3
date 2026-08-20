@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Running one large request in parallel — Ishtiaq Hossain</title>
+<meta name="description" content="Configurable actions against many rows at once, with results written back where they came from.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../styles.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><path fill='%23008080' d='M0 0H100V100H58.018V83.964H83.964V58.018H58.018V41.982H83.964V16.036H16.036V41.982H41.982V58.018H16.036V83.964H41.982V100H0Z'/></svg>">
+</head>
+<body>
+
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="site-head">
+  <div class="wrap head-inner">
+    <div class="brand">
+      <span class="brand__mark" aria-hidden="true"></span>
+      <a class="brand__name" href="../index.html">Ishtiaq Hossain</a>
+    </div>
+    <nav class="nav" aria-label="Primary">
+      <a href="../index.html#work">Work</a>
+      <a href="../index.html#experience">Experience</a>
+      <a href="../index.html#stack">Stack</a>
+    </nav>
+    <a class="btn btn--accent btn--sm"
+       href="https://calendar.app.google/BoDFLEuxzedu7jU39"
+       target="_blank" rel="noopener noreferrer">Book a call</a>
+  </div>
+</header>
+
+<main id="main">
+
+  <article class="cs">
+    <header class="cs-head wrap">
+      <p class="eyebrow">Case study 05 — Anlytic</p>
+      <h1 class="cs-title">Running one large request in parallel</h1>
+      <p class="cs-lede">Configurable actions against many rows at once, with results written back where they came from.</p>
+      <ul class="tags"><li>Full-stack lead</li><li>Go</li><li>TypeScript</li><li>Kafka</li></ul>
+    </header>
+
+    <div class="wrap">
+      <div class="cs-facts">
+          <div class="cs-fact"><p class="cs-fact__val">Bounded</p><p class="cs-fact__label">work in flight</p></div>
+          <div class="cs-fact"><p class="cs-fact__val">Spread</p><p class="cs-fact__label">across lanes</p></div>
+          <div class="cs-fact"><p class="cs-fact__val">Isolated</p><p class="cs-fact__label">execution</p></div>
+      </div>
+
+      <section class="cs-block">
+        <h2 class="cs-h">The problem</h2>
+        <p>Users attach an integration to rows of their own data, configure it against their own columns, and get structured results back. A single request can carry several actions across a great many rows, which is where a naive design falls over.</p>
+      </section>
+
+      <section class="cs-block">
+        <h2 class="cs-h">How it fits together</h2>
+      </section>
+
+      <figure class="cs-fig">
+        <svg class="dg" viewBox="0 0 720 216" role="img" aria-labelledby="dg-table-actions">
+          <title id="dg-table-actions">Spreading one large request</title>
+          <defs>
+      <marker id="a" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto">
+        <path d="M0 0 L8 4 L0 8 z" class="head"/></marker>
+      <marker id="ak" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto">
+        <path d="M0 0 L8 4 L0 8 z" class="head--k"/></marker>
+    </defs>
+          <rect x="4" y="82" width="118" height="56" rx="7" class="sh"/><text x="63" y="106" text-anchor="middle" class="t">one request</text><text x="63" y="122" text-anchor="middle" class="s">many rows</text><path d="M128 110 H180" class="ln flow" marker-end="url(#a)"/><polygon points="252,67.0 318.0,110 252,153.0 186.0,110" class="sh"/><text x="252" y="114" text-anchor="middle" class="t">checked first</text><path d="M318 92 L372 46" class="ln flow" marker-end="url(#a)"/><path d="M318 104 L372 92" class="ln flow" marker-end="url(#a)"/><path d="M318 116 L372 138" class="ln flow" marker-end="url(#a)"/><path d="M318 128 L372 184" class="ln flow" marker-end="url(#a)"/><polygon points="377.0,46 400.85,24.0 459.15,24.0 483.0,46 459.15,68.0 400.85,68.0" class="sh--k"/><text x="430" y="51" text-anchor="middle" class="k">lane</text><polygon points="377.0,92 400.85,70.0 459.15,70.0 483.0,92 459.15,114.0 400.85,114.0" class="sh--k"/><text x="430" y="97" text-anchor="middle" class="k">lane</text><polygon points="377.0,138 400.85,116.0 459.15,116.0 483.0,138 459.15,160.0 400.85,160.0" class="sh--k"/><text x="430" y="143" text-anchor="middle" class="k">lane</text><polygon points="377.0,184 400.85,162.0 459.15,162.0 483.0,184 459.15,206.0 400.85,206.0" class="sh--k"/><text x="430" y="189" text-anchor="middle" class="k">lane</text><path d="M484 46 H540" class="ln--k flow" marker-end="url(#ak)"/><path d="M484 92 H540" class="ln--k flow" marker-end="url(#ak)"/><path d="M484 138 H540" class="ln--k flow" marker-end="url(#ak)"/><path d="M484 184 H540" class="ln--k flow" marker-end="url(#ak)"/><circle cx="566" cy="46" r="18" class="sh"/><text x="566" y="50" text-anchor="middle" class="s">w</text><circle cx="566" cy="92" r="18" class="sh"/><text x="566" y="96" text-anchor="middle" class="s">w</text><circle cx="566" cy="138" r="18" class="sh"/><text x="566" y="142" text-anchor="middle" class="s">w</text><circle cx="566" cy="184" r="18" class="sh"/><text x="566" y="188" text-anchor="middle" class="s">w</text><path d="M586 46 L640 100" class="ln flow" marker-end="url(#a)"/><path d="M586 92 L640 108" class="ln flow" marker-end="url(#a)"/><path d="M586 138 L640 116" class="ln flow" marker-end="url(#a)"/><path d="M586 184 L640 124" class="ln flow" marker-end="url(#a)"/><path d="M646 91 a35.0 7 0 0 1 70 0 v42 a35.0 7 0 0 1 -70 0 z" class="sh"/><path d="M646 91 a35.0 7 0 0 0 70 0" class="sh" fill="none"/><text x="681" y="118" text-anchor="middle" class="t">back</text><text x="430" y="22" text-anchor="middle" class="s">work is spread, not queued</text>
+        </svg>
+        <figcaption>Split the wrong way and a large request lands in a single lane. The whole design is about which key decides the lane.</figcaption>
+      </figure>
+
+      <section class="cs-block">
+        <h2 class="cs-h">What I did</h2>
+        <div class="cs-step">
+          <h3>Check before starting</h3>
+          <p>The whole request is validated up front, so a bad configuration fails immediately rather than halfway through a long run.</p>
+        </div>
+        <div class="cs-step">
+          <h3>Bound the concurrency</h3>
+          <p>Work is dispatched in parallel but with a ceiling, so one large request cannot exhaust the system it is running on.</p>
+        </div>
+        <div class="cs-step">
+          <h3>Spread the load</h3>
+          <p>How work is keyed decides which lane it lands in. Chosen carelessly, an entire import queues behind one consumer while everything else sits idle.</p>
+        </div>
+      </section>
+
+      <section class="cs-block">
+        <h2 class="cs-h">The hard part</h2>
+        <p class="cs-pull">The keying decision. It is one line of code, and most of the throughput depends on it. Key by something natural and every row of one big import lands in the same lane, which is the bottleneck the parallelism was meant to avoid.</p>
+      </section>
+
+      <section class="cs-block">
+        <h2 class="cs-h">Stack</h2>
+        <ul class="tags tags--lg"><li>Go</li><li>TypeScript</li><li>Kafka</li><li>Redis</li><li>gRPC</li><li>PostgreSQL</li></ul>
+        <p class="cs-note">Written at the level the reasoning survives. Internal
+        specifics are left out on purpose.</p>
+      </section>
+
+      <nav class="cs-nav" aria-label="Case studies">
+        <a class="cs-nav__link" href="database-pools.html">← Letting idle resources sleep, safely</a>
+        <a class="cs-nav__link cs-nav__link--next" href="dashboard-actions.html">Automations that run with nobody watching →</a>
+      </nav>
+
+      <p class="cs-back"><a href="../index.html#work">← All work</a></p>
+    </div>
+  </article>
+
+</main>
+
+<section class="cta">
+  <div class="wrap cta__inner">
+    <p class="eyebrow eyebrow--invert">Next step</p>
+    <h2 class="cta__title">Got something stuck?<br>Let's look at it together.</h2>
+    <p class="cta__body">Send the shape of the problem — a repo, a diagram, or three paragraphs of frustration. I'll reply with what I'd do first and what it would take.</p>
+    <div class="cta__actions">
+      <a class="btn btn--accent btn--lg" href="mailto:ih.tonmoy@gmail.com">ih.tonmoy@gmail.com</a>
+      <a class="btn btn--outline btn--lg" href="tel:+8801622700036">+880 16227 00036</a>
+    </div>
+  </div>
+</section>
+
+<footer class="site-foot">
+  <div class="wrap foot__grid">
+    <div class="foot__brand">
+      <p class="foot__name">Ishtiaq Hossain</p>
+      <p class="foot__role">Fullstack Developer · Dhaka, Bangladesh</p>
+    </div>
+    <nav class="foot__nav" aria-label="Footer">
+      <p class="foot__label">Sections</p>
+      <a href="../index.html#work">Work</a>
+      <a href="../index.html#experience">Experience</a>
+      <a href="../index.html#stack">Stack</a>
+    </nav>
+    <div class="foot__nav">
+      <p class="foot__label">Elsewhere</p>
+      <a href="https://ishtiaq.dev">ishtiaq.dev</a>
+      <a href="mailto:ih.tonmoy@gmail.com">Email</a>
+      <a href="tel:+8801622700036">Phone</a>
+    </div>
+    <p class="foot__copy">© 2026 Ishtiaq Hossain. Built with hand-written HTML and CSS.</p>
+  </div>
+</footer>
+
+</body>
+</html>

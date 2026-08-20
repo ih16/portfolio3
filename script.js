@@ -1,0 +1,225 @@
+/* ============================================================
+   Hero pointer effects — the only JavaScript on the page.
+   It feeds the real pointer position to three things:
+     .hero__glow     the cursor light  (heaviest lag, smears when moving)
+     .cursor__trail  ghosts bridging the gap between cursor and light
+     .hero__cursor   the emitter — aura lags slightly, filament is exact
+   How they *look* stays entirely in CSS.
+   ============================================================ */
+(() => {
+  'use strict';
+
+  const hero = document.querySelector('.hero');
+  if (!hero) return;
+
+  const glow   = hero.querySelector('.hero__glow');
+  const cursor = hero.querySelector('.hero__cursor');
+  const ring   = cursor && cursor.querySelector('.cursor__ring');
+  const dot    = cursor && cursor.querySelector('.cursor__dot');
+  if (!glow && !cursor) return;
+
+  // needs a real pointer — no cursor to replace on touch
+  if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
+
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+  // only hide the system cursor once we know we can draw a replacement,
+  // so a script failure never leaves the hero with no cursor at all
+  if (cursor) hero.classList.add('hero--custom-cursor');
+
+  /* ---- trail ---------------------------------------------------------
+     The lag between cursor and light used to read as latency. These ghosts
+     fill that gap. They form a chain — each link pulls toward the link ahead
+     of it — so the tail bends along the path travelled instead of every node
+     racing the pointer on its own. Fade and size ease out along the chain.  */
+  const TRAIL = 9;
+  const trail = [];
+
+  if (cursor) {
+    for (let i = 0; i < TRAIL; i++) {
+      const el = document.createElement('span');
+      el.className = 'cursor__trail';
+      const t = (i + 1) / TRAIL;                 // 0 → nearest, 1 → furthest
+      // ease out both fade and size so the tail thins away instead of
+      // stopping at a visible last link
+      el.style.opacity = String(0.46 * Math.pow(1 - t, 1.5) + 0.04);
+      trail.push({
+        el,
+        ease: 0.34,                              // one stiffness for every link
+        scale: 1 - Math.pow(t, 0.85) * 0.66,
+        x: 0, y: 0
+      });
+      cursor.appendChild(el);
+    }
+  }
+
+  let clientX = 0, clientY = 0;     // viewport space
+  let targetX = 0, targetY = 0;     // hero space
+  let glowX = 0, glowY = 0;
+  let ringX = 0, ringY = 0;
+  let frame = 0;
+  let placed = false;
+  let active = false;
+
+  const move = (el, x, y, extra) =>
+    el.style.transform = `translate(${x}px, ${y}px) translate(-50%, -50%)${extra || ''}`;
+
+  // where the hero sat at the last measurement, in viewport space
+  let heroLeft = 0, heroTop = 0;
+
+  const measure = () => {
+    const rect = hero.getBoundingClientRect();   // one read per frame
+    heroLeft = rect.left;
+    heroTop  = rect.top;
+    targetX = clientX - rect.left;
+    targetY = clientY - rect.top;
+  };
+
+  /* Everything is stored in hero space, but the pointer lives in viewport
+     space. Scrolling moves the hero under a stationary pointer, so those
+     coordinates silently stop matching and the light drifts off the cursor.
+     No pointermove fires, so nothing corrects it. Shift every stored
+     position by however far the hero travelled and the whole assembly stays
+     glued to the pointer — no sweeping back, since the pointer never moved. */
+  const reanchor = () => {
+    if (!placed) return;
+
+    const rect = hero.getBoundingClientRect();
+    const dx = heroLeft - rect.left;
+    const dy = heroTop  - rect.top;
+
+    if (dx || dy) {
+      glowX += dx; glowY += dy;
+      ringX += dx; ringY += dy;
+      for (const node of trail) { node.x += dx; node.y += dy; }
+    }
+
+    heroLeft = rect.left;
+    heroTop  = rect.top;
+    targetX = clientX - rect.left;
+    targetY = clientY - rect.top;
+
+    if (dot)  move(dot, targetX, targetY);
+    if (glow) move(glow, glowX, glowY);
+    if (ring) move(ring, ringX, ringY);
+    for (const node of trail) move(node.el, node.x, node.y, ` scale(${node.scale})`);
+  };
+
+  // scroll fires far faster than we can paint — collapse to one per frame
+  let anchorQueued = false;
+  const onViewportChange = () => {
+    if (anchorQueued) return;
+    anchorQueued = true;
+    requestAnimationFrame(() => { anchorQueued = false; reanchor(); });
+  };
+
+  const tick = () => {
+    measure();
+
+    // different lag per element is what sells it: the light drags well
+    // behind, the ring follows closely, the filament is already exact
+    const glowEase = reduced.matches ? 1 : 0.14;
+    const ringEase = reduced.matches ? 1 : 0.26;
+
+    // gap between the light and the pointer doubles as a velocity vector —
+    // stretch the light along it so fast moves smear instead of sliding
+    const dx = targetX - glowX;
+    const dy = targetY - glowY;
+    const speed = Math.hypot(dx, dy);
+    const stretch = reduced.matches ? 0 : Math.min(speed / 900, 0.42);
+    const angle = Math.atan2(dy, dx);
+
+    glowX += dx * glowEase;
+    glowY += dy * glowEase;
+    ringX += (targetX - ringX) * ringEase;
+    ringY += (targetY - ringY) * ringEase;
+
+    if (glow) {
+      // rotate → scale → UNrotate. That composes to a pure stretch along the
+      // direction of travel while leaving the blob's own orientation alone.
+      // Rotating without undoing it makes the shape spin on its axis whenever
+      // the pointer moves in a circle, which is not what motion blur does.
+      move(glow, glowX, glowY,
+        ` rotate(${angle}rad) scale(${1 + stretch}, ${1 - stretch * 0.5}) rotate(${-angle}rad)`);
+    }
+    if (ring) move(ring, ringX, ringY);
+
+    // Each ghost follows the one AHEAD of it, not the pointer. Chasing the
+    // pointer independently makes them cut across the inside of a curve and
+    // bunch up; chained, they lay out along the path actually travelled.
+    let tailSettled = true;
+    let leadX = ringX, leadY = ringY;
+    for (const node of trail) {
+      const ease = reduced.matches ? 1 : node.ease;
+      const gx = leadX - node.x;
+      const gy = leadY - node.y;
+      node.x += gx * ease;
+      node.y += gy * ease;
+      move(node.el, node.x, node.y, ` scale(${node.scale})`);
+      if (Math.abs(gx) > 0.4 || Math.abs(gy) > 0.4) tailSettled = false;
+      leadX = node.x;
+      leadY = node.y;
+    }
+
+    const settled = tailSettled &&
+      Math.abs(dx) < 0.4 && Math.abs(dy) < 0.4 &&
+      Math.abs(targetX - ringX) < 0.4 && Math.abs(targetY - ringY) < 0.4;
+
+    frame = settled ? 0 : requestAnimationFrame(tick);
+  };
+
+  const snap = () => {
+    measure();
+    glowX = ringX = targetX;
+    glowY = ringY = targetY;
+    if (glow) move(glow, glowX, glowY);
+    if (ring) move(ring, ringX, ringY);
+    for (const node of trail) {
+      node.x = targetX;
+      node.y = targetY;
+      move(node.el, node.x, node.y, ` scale(${node.scale})`);
+    }
+  };
+
+  hero.addEventListener('pointermove', (event) => {
+    if (event.pointerType !== 'mouse') return;
+
+    clientX = event.clientX;
+    clientY = event.clientY;
+    measure();
+
+    // the filament never lags — it *is* the pointer
+    if (dot) move(dot, targetX, targetY);
+
+    // entering: jump into place rather than sweeping in from the last spot
+    if (!placed) {
+      snap();
+      placed = true;
+      if (cursor) cursor.classList.add('is-visible');
+      return;
+    }
+
+    // grow the source over anything clickable
+    const overLink = !!event.target.closest('a, button, input, label, summary');
+    if (overLink !== active) {
+      active = overLink;
+      if (cursor) cursor.classList.toggle('is-active', active);
+    }
+
+    if (!frame) frame = requestAnimationFrame(tick);
+  }, { passive: true });
+
+  hero.addEventListener('pointerleave', () => {
+    placed = false;
+    if (cursor) cursor.classList.remove('is-visible', 'is-active');
+    active = false;
+    if (frame) { cancelAnimationFrame(frame); frame = 0; }
+  }, { passive: true });
+
+  window.addEventListener('scroll', onViewportChange, { passive: true });
+  window.addEventListener('resize', onViewportChange, { passive: true });
+
+  // pressing gives the source a bit of feedback
+  hero.addEventListener('pointerdown', () => cursor && cursor.classList.add('is-down'), { passive: true });
+  window.addEventListener('pointerup',  () => cursor && cursor.classList.remove('is-down'), { passive: true });
+})();

@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ishtiaq Hossain — Fullstack Developer</title>
+<meta name="description" content="Fullstack developer building scalable microservices, event-driven pipelines and the product surfaces on top of them — Go, TypeScript, Kafka and Kubernetes.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><path fill='%23008080' d='M0 0H100V100H58.018V83.964H83.964V58.018H58.018V41.982H83.964V16.036H16.036V41.982H41.982V58.018H16.036V83.964H41.982V100H0Z'/></svg>">
+</head>
+<body>
+
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="site-head">
+  <div class="wrap head-inner">
+    <div class="brand">
+      <!-- the pet lives here permanently: the mark is its body, and bubbles
+           drop from it downward into the page -->
+      <div class="pet" data-state="idle">
+        <div class="pet__mark">
+          <button class="pet__body" type="button" aria-label="Hear something else">
+            <!-- the mark is a mask over a gradient, so loading progress fills
+                 the glyph itself rather than needing a ring around it -->
+            <span class="brand__mark" aria-hidden="true"></span>
+          </button>
+        </div>
+
+        <div class="pet__bubble" hidden title="Click to dismiss">
+          <p class="pet__text" aria-live="polite"></p>
+        </div>
+      </div>
+
+      <a class="brand__name" href="#top">Ishtiaq Hossain</a>
+    </div>
+    <nav class="nav" aria-label="Primary">
+      <a href="#experience">Experience</a>
+      <a href="#services">Services</a>
+      <a href="#stack">Stack</a>
+    </nav>
+    <a class="btn btn--ghost btn--sm"
+       href="ishtiaq-hossain-cv.pdf"
+       download="Ishtiaq-Hossain-CV.pdf">Download CV</a>
+
+    <a class="btn btn--accent btn--sm"
+       href="https://calendar.app.google/BoDFLEuxzedu7jU39"
+       target="_blank" rel="noopener noreferrer">Book a call</a>
+  </div>
+</header>
+
+<main id="main">
+
+  <!-- ───────────────────────── HERO ───────────────────────── -->
+  <section class="hero" id="top">
+      <div class="hero__glow" aria-hidden="true"></div>
+
+      <div class="hero__cursor" aria-hidden="true">
+        <span class="cursor__ring"></span>
+        <span class="cursor__dot"><i class="cursor__star"></i></span>
+      </div>
+
+
+      <div class="hero__bg" aria-hidden="true">
+        <div class="marquee marquee--left" style="--mq-dur: 42s;">
+          <div class="marquee__inner">
+            <ul class="marquee__track">
+              <li class="chip">TypeScript</li>
+              <li class="chip">JavaScript</li>
+              <li class="chip">Go</li>
+              <li class="chip">Python</li>
+              <li class="chip">PHP</li>
+              <li class="chip">SQL</li>
+              <li class="chip">GraphQL</li>
+              <li class="chip">TypeScript</li>
+              <li class="chip">JavaScript</li>
+              <li class="chip">Go</li>
+              <li class="chip">Python</li>
+              <li class="chip">PHP</li>
+            </ul>
+            <ul class="marquee__track">
+              <li class="chip">TypeScript</li>
+              <li class="chip">JavaScript</li>
+              <li class="chip">Go</li>
+              <li class="chip">Python</li>
+              <li class="chip">PHP</li>
+              <li class="chip">SQL</li>
+              <li class="chip">GraphQL</li>
+              <li class="chip">TypeScript</li>
+              <li class="chip">JavaScript</li>
+              <li class="chip">Go</li>
+              <li class="chip">Python</li>
+              <li class="chip">PHP</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="marquee marquee--right" style="--mq-dur: 55s;">
+          <div class="marquee__inner">
+            <ul class="marquee__track">
+              <li class="chip">React</li>
+              <li class="chip">Next.js</li>
+              <li class="chip">Astro</li>
+              <li class="chip">Tailwind</li>
+              <li class="chip">Node.js</li>
+              <li class="chip">Express</li>
+              <li class="chip">Gin</li>
+              <li class="chip">React</li>
+              <li class="chip">Next.js</li>
+              <li class="chip">Astro</li>
+              <li class="chip">Tailwind</li>
+              <li class="chip">Node.js</li>
+            </ul>
+            <ul class="marquee__track">
+              <li class="chip">React</li>
+              <li class="chip">Next.js</li>
+              <li class="chip">Astro</li>
+              <li class="chip">Tailwind</li>
+              <li class="chip">Node.js</li>
+              <li class="chip">Express</li>
+              <li class="chip">Gin</li>
+              <li class="chip">React</li>
+              <li class="chip">Next.js</li>
+              <li class="chip">Astro</li>
+              <li class="chip">Tailwind</li>
+              <li class="chip">Node.js</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="marquee marquee--left" style="--mq-dur: 48s;">
+          <div class="marquee__inner">
+            <ul class="marquee__track">
+              <li class="chip">Kafka</li>
+              <li class="chip">BullMQ</li>
+              <li class="chip">Asynq</li>
+              <li class="chip">Redis</li>
+              <li class="chip">REST APIs</li>
+              <li class="chip">gRPC</li>
+              <li class="chip">WebSocket</li>
+              <li class="chip">Kafka</li>
+              <li class="chip">BullMQ</li>
+              <li class="chip">Asynq</li>
+              <li class="chip">Redis</li>
+              <li class="chip">REST APIs</li>
+              <li class="chip">gRPC</li>
+              <li class="chip">WebSocket</li>
+            </ul>
+            <ul class="marquee__track">
+              <li class="chip">Kafka</li>
+              <li class="chip">BullMQ</li>
+              <li class="chip">Asynq</li>
+              <li class="chip">Redis</li>
+              <li class="chip">REST APIs</li>
+              <li class="chip">gRPC</li>
+              <li class="chip">WebSocket</li>
+              <li class="chip">Kafka</li>
+              <li class="chip">BullMQ</li>
+              <li class="chip">Asynq</li>
+              <li class="chip">Redis</li>
+              <li class="chip">REST APIs</li>
+              <li class="chip">gRPC</li>
+              <li class="chip">WebSocket</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="marquee marquee--right" style="--mq-dur: 60s;">
+          <div class="marquee__inner">
+            <ul class="marquee__track">
+              <li class="chip">Django</li>
+              <li class="chip">Laravel</li>
+              <li class="chip">CodeIgniter</li>
+              <li class="chip">Strapi</li>
+              <li class="chip">Payload CMS</li>
+              <li class="chip">Django</li>
+              <li class="chip">Laravel</li>
+              <li class="chip">CodeIgniter</li>
+              <li class="chip">Strapi</li>
+              <li class="chip">Payload CMS</li>
+              <li class="chip">Django</li>
+              <li class="chip">Laravel</li>
+            </ul>
+            <ul class="marquee__track">
+              <li class="chip">Django</li>
+              <li class="chip">Laravel</li>
+              <li class="chip">CodeIgniter</li>
+              <li class="chip">Strapi</li>
+              <li class="chip">Payload CMS</li>
+              <li class="chip">Django</li>
+              <li class="chip">Laravel</li>
+              <li class="chip">CodeIgniter</li>
+              <li class="chip">Strapi</li>
+              <li class="chip">Payload CMS</li>
+              <li class="chip">Django</li>
+              <li class="chip">Laravel</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="marquee marquee--left" style="--mq-dur: 38s;">
+          <div class="marquee__inner">
+            <ul class="marquee__track">
+              <li class="chip">PostgreSQL</li>
+              <li class="chip">MySQL</li>
+              <li class="chip">MongoDB</li>
+              <li class="chip">NoSQL</li>
+              <li class="chip">Docker</li>
+              <li class="chip">Kubernetes</li>
+              <li class="chip">PostGIS</li>
+              <li class="chip">PgBouncer</li>
+              <li class="chip">PostgreSQL</li>
+              <li class="chip">MySQL</li>
+              <li class="chip">MongoDB</li>
+              <li class="chip">NoSQL</li>
+              <li class="chip">Docker</li>
+              <li class="chip">Kubernetes</li>
+              <li class="chip">PostGIS</li>
+              <li class="chip">PgBouncer</li>
+            </ul>
+            <ul class="marquee__track">
+              <li class="chip">PostgreSQL</li>
+              <li class="chip">MySQL</li>
+              <li class="chip">MongoDB</li>
+              <li class="chip">NoSQL</li>
+              <li class="chip">Docker</li>
+              <li class="chip">Kubernetes</li>
+              <li class="chip">PostGIS</li>
+              <li class="chip">PgBouncer</li>
+              <li class="chip">PostgreSQL</li>
+              <li class="chip">MySQL</li>
+              <li class="chip">MongoDB</li>
+              <li class="chip">NoSQL</li>
+              <li class="chip">Docker</li>
+              <li class="chip">Kubernetes</li>
+              <li class="chip">PostGIS</li>
+              <li class="chip">PgBouncer</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="marquee marquee--right" style="--mq-dur: 52s;">
+          <div class="marquee__inner">
+            <ul class="marquee__track">
+              <li class="chip">AWS</li>
+              <li class="chip">GCP</li>
+              <li class="chip">DigitalOcean</li>
+              <li class="chip">Vercel</li>
+              <li class="chip">Docker</li>
+              <li class="chip">Kubernetes</li>
+              <li class="chip">Helm</li>
+              <li class="chip">Traefik</li>
+              <li class="chip">Grafana</li>
+              <li class="chip">MinIO</li>
+              <li class="chip">Sentry</li>
+              <li class="chip">Git</li>
+              <li class="chip">CI/CD</li>
+              <li class="chip">Agile</li>
+            </ul>
+            <ul class="marquee__track">
+              <li class="chip">AWS</li>
+              <li class="chip">GCP</li>
+              <li class="chip">DigitalOcean</li>
+              <li class="chip">Vercel</li>
+              <li class="chip">Docker</li>
+              <li class="chip">Kubernetes</li>
+              <li class="chip">Helm</li>
+              <li class="chip">Traefik</li>
+              <li class="chip">Grafana</li>
+              <li class="chip">MinIO</li>
+              <li class="chip">Sentry</li>
+              <li class="chip">Git</li>
+              <li class="chip">CI/CD</li>
+              <li class="chip">Agile</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="marquee marquee--left" style="--mq-dur: 45s;">
+          <div class="marquee__inner">
+            <ul class="marquee__track">
+              <li class="chip">Stripe</li>
+              <li class="chip">Trustly</li>
+              <li class="chip">Klarna</li>
+              <li class="chip">Altapay</li>
+              <li class="chip">gRPC</li>
+              <li class="chip">Kafka</li>
+              <li class="chip">Stripe</li>
+              <li class="chip">Trustly</li>
+              <li class="chip">Klarna</li>
+              <li class="chip">Altapay</li>
+              <li class="chip">gRPC</li>
+              <li class="chip">Kafka</li>
+            </ul>
+            <ul class="marquee__track">
+              <li class="chip">Stripe</li>
+              <li class="chip">Trustly</li>
+              <li class="chip">Klarna</li>
+              <li class="chip">Altapay</li>
+              <li class="chip">gRPC</li>
+              <li class="chip">Kafka</li>
+              <li class="chip">Stripe</li>
+              <li class="chip">Trustly</li>
+              <li class="chip">Klarna</li>
+              <li class="chip">Altapay</li>
+              <li class="chip">gRPC</li>
+              <li class="chip">Kafka</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+    <div class="wrap hero__grid">
+      <div class="hero__lead">
+        <p class="eyebrow"><span class="dot"></span> Available for remote engagements</p>
+        <h1 class="hero__title">You've got this far.<br>I'll take it from <em>here</em>.</h1>
+        <p class="hero__body">
+          There is no perfect answer, only the best one the moment allows. I find that
+          one, ship it, and take on the problems other people would rather not.
+        </p>
+        <div class="hero__cta">
+          <a class="btn btn--accent"
+             href="https://calendar.app.google/BoDFLEuxzedu7jU39"
+             target="_blank" rel="noopener noreferrer">Book a call</a>
+          <a class="btn btn--ghost" href="#experience">See work experience</a>
+        </div>
+      </div>
+
+      <aside class="specs" aria-label="Engineer specs">
+        <p class="specs__label">Specs</p>
+        <dl class="specs__list">
+          <div class="spec"><dt>Based</dt><dd>Dhaka, Bangladesh</dd></div>
+          <div class="spec"><dt>Mode</dt><dd>Remote · Intl</dd></div>
+          <div class="spec"><dt>Engage</dt><dd>Full-time · Part-time · Contract</dd></div>
+          <div class="spec"><dt>Experience</dt><dd>5+ years · 4 roles</dd></div>
+          <div class="spec"><dt>Stack</dt><dd>TS · Go · Python · React · Next · K8s</dd></div>
+        </dl>      </aside>
+    </div>
+  </section>
+
+  <!-- ───────────────────────── EXPERIENCE ───────────────────────── -->
+  <section class="sec" id="experience">
+    <div class="wrap">
+      <header class="sec-head">
+        <p class="eyebrow">01 — Experience</p>
+        <h2 class="sec-title">Where the work happened.</h2>
+      </header>
+
+      <ol class="roles">
+
+        <li class="role">
+          <div class="role__meta">
+            <p class="role__date">Jan 2026 — Current</p>
+            <p class="role__place">Remote · Netherlands</p>
+          </div>
+          <div class="role__main">
+            <h3 class="role__title">Principal Backend Developer</h3>
+            <p class="role__co"><a href="https://anlytic.com" target="_blank" rel="noopener noreferrer">Anlytic</a></p>
+            <ul class="bullets">
+              <li>Architected and built a scalable microservices platform with gRPC, Kafka and Kubernetes.</li>
+              <li>Developed an advanced event-driven data processing pipeline with Kafka streaming.</li>
+              <li>Engineered a worker service with AI integration and long-running task management.</li>
+              <li>Implemented real-time WebSocket broadcasting with multi-instance coordination.</li>
+              <li>Established CI/CD pipelines and container orchestration infrastructure on Kubernetes.</li>
+            </ul>
+          </div>
+        </li>
+
+        <li class="role">
+          <div class="role__meta">
+            <p class="role__date">Dec 2022 — Jan 2026</p>
+            <p class="role__place">Dhaka, Bangladesh</p>
+          </div>
+          <div class="role__main">
+            <h3 class="role__title">Senior Software Engineer</h3>
+            <p class="role__co"><a href="https://strativ.se" target="_blank" rel="noopener noreferrer">Strativ BD Limited</a></p>
+            <ul class="bullets">
+              <li>Led frontend development of the Vaylo SaaS booking management system.</li>
+              <li>Optimized the Next.js app, reducing AWS ECS compute costs 75% through caching and architecture improvements.</li>
+              <li>Designed and developed a booking widget, cutting client integration time by 80%.</li>
+              <li>Implemented AI-driven multilingual translation across 6+ languages, reducing content management time 90%.</li>
+              <li>Integrated Stripe, Trustly, Klarna and Altapay for secure global payment processing.</li>
+              <li>Architected a scalable, multi-tenant headless website using Payload CMS and Next.js.</li>
+              <li>Developed a full-stack eCommerce accounting ERP for Indexon using Go, Webix and TypeScript, integrating Shopify, Magento and WooCommerce.</li>
+            </ul>
+          </div>
+        </li>
+
+        <li class="role">
+          <div class="role__meta">
+            <p class="role__date">Dec 2021 — Jan 2026</p>
+            <p class="role__place">Remote · Mississauga, ON</p>
+          </div>
+          <div class="role__main">
+            <h3 class="role__title">Fullstack Developer <span class="role__tag">Part-time contract via ZeuZ AI</span></h3>
+            <p class="role__co"><a href="https://www.texadasoftware.com" target="_blank" rel="noopener noreferrer">Texada Software</a></p>
+            <ul class="bullets">
+              <li>Developed and maintained rental management platforms using React, PHP Phalcon and Python Django.</li>
+              <li>Built an AI-powered product description generator to automate and enhance e-commerce content creation.</li>
+              <li>Collaborated in a fully remote Agile environment, delivering features across multiple tech stacks.</li>
+              <li>Wrote tests with Jest and Pytest to ensure code reliability and maintainability.</li>
+            </ul>
+          </div>
+        </li>
+
+        <li class="role">
+          <div class="role__meta">
+            <p class="role__date">May 2021 — Nov 2022</p>
+            <p class="role__place">Dhaka, Bangladesh</p>
+          </div>
+          <div class="role__main">
+            <h3 class="role__title">Software Engineer</h3>
+            <p class="role__co"><a href="https://strativ.se" target="_blank" rel="noopener noreferrer">Strativ BD Limited</a></p>
+            <ul class="bullets">
+              <li>Built a GDPR-compliant WordPress plugin for end-to-end email encryption.</li>
+              <li>Built complex UI components and accounting, pricing and payment features for a booking management system.</li>
+              <li>Developed a type-safe headless CMS with Next.js and Strapi using TypeScript and GraphQL codegen.</li>
+              <li>Migrated a website from WordPress to a Next.js + Strapi stack, boosting performance by 150%.</li>
+              <li>Implemented Mailchimp audience capture and journey triggers using the API.</li>
+            </ul>
+          </div>
+        </li>
+
+      </ol>
+    </div>
+  </section>
+
+  <!-- Temporarily hidden for launch. Remove the hidden attribute when the
+       case studies are ready to publish. -->
+  <section class="band" id="work" hidden>
+    <div class="wrap">
+      <header class="sec-head">
+        <p class="eyebrow">02 — Case studies</p>
+        <h2 class="sec-title">Six problems worth writing up.</h2>
+        <p class="sec-note">Platform work at Anlytic: authentication, billing, data
+          integration and automation. Written at the level the reasoning survives —
+          the decision is the interesting part, not the internals.</p>
+      </header>
+
+      <div class="cases cases--grid">
+        <a class="case case--link" href="work/mfa.html">
+          <div class="case__head">
+            <p class="case__no">01</p>
+            <h3>A second factor for a passwordless login</h3>
+            <p class="case__org">Anlytic · Full-stack lead</p>
+          </div>
+          <div class="case__body">
+            <p>Adding a real second factor to an email-code login, without making the first one decorative.</p>
+            <ul class="tags"><li>Go</li><li>React</li><li>PostgreSQL</li><li>TOTP</li></ul>
+            <p class="case__more">Read the case study →</p>
+          </div>
+        </a>
+
+        <a class="case case--link" href="work/billing.html">
+          <div class="case__head">
+            <p class="case__no">02</p>
+            <h3>Telling two payment failures apart</h3>
+            <p class="case__org">Anlytic · Full-stack lead</p>
+          </div>
+          <div class="case__body">
+            <p>Owning the subscription lifecycle, and never removing access from someone who had already paid.</p>
+            <ul class="tags"><li>Go</li><li>React</li><li>PostgreSQL</li><li>Kafka</li></ul>
+            <p class="case__more">Read the case study →</p>
+          </div>
+        </a>
+
+        <a class="case case--link" href="work/connectors.html">
+          <div class="case__head">
+            <p class="case__no">03</p>
+            <h3>Finishing a job after the user has gone</h3>
+            <p class="case__org">Anlytic · Hands-on engineer</p>
+          </div>
+          <div class="case__body">
+            <p>Connecting a data source when the slow part completes long after the page has closed.</p>
+            <ul class="tags"><li>Go</li><li>gRPC</li><li>PostgreSQL</li><li>React</li></ul>
+            <p class="case__more">Read the case study →</p>
+          </div>
+        </a>
+
+        <a class="case case--link" href="work/database-pools.html">
+          <div class="case__head">
+            <p class="case__no">04</p>
+            <h3>Letting idle resources sleep, safely</h3>
+            <p class="case__org">Anlytic · Hands-on engineer</p>
+          </div>
+          <div class="case__body">
+            <p>Releasing what is not being used, and bringing it back so transparently that nothing notices.</p>
+            <ul class="tags"><li>Go</li><li>PostgreSQL</li><li>Redis</li><li>Kubernetes</li></ul>
+            <p class="case__more">Read the case study →</p>
+          </div>
+        </a>
+
+        <a class="case case--link" href="work/table-actions.html">
+          <div class="case__head">
+            <p class="case__no">05</p>
+            <h3>Running one large request in parallel</h3>
+            <p class="case__org">Anlytic · Full-stack lead</p>
+          </div>
+          <div class="case__body">
+            <p>Configurable actions against many rows at once, with results written back where they came from.</p>
+            <ul class="tags"><li>Go</li><li>TypeScript</li><li>Kafka</li><li>Redis</li></ul>
+            <p class="case__more">Read the case study →</p>
+          </div>
+        </a>
+
+        <a class="case case--link" href="work/dashboard-actions.html">
+          <div class="case__head">
+            <p class="case__no">06</p>
+            <h3>Automations that run with nobody watching</h3>
+            <p class="case__org">Anlytic · Full-stack lead</p>
+          </div>
+          <div class="case__body">
+            <p>Scheduled actions driven by what a chart shows, without a browser open and without repeating themselves.</p>
+            <ul class="tags"><li>Go</li><li>TypeScript</li><li>Kafka</li><li>Redis</li></ul>
+            <p class="case__more">Read the case study →</p>
+          </div>
+        </a>
+      </div>
+
+      <h3 class="cases__sub">Earlier work</h3>
+      <p class="cases__subnote">Case studies for these are coming.</p>
+
+      <div class="cases">
+        <article class="case case--brief">
+          <div class="case__head">
+            <h3>Vaylo — SaaS booking management</h3>
+            <p class="case__org">Strativ BD</p>
+          </div>
+          <div class="case__body">
+            <p>Led the frontend: an embeddable booking widget that cut client integration time 80%, AI translation across six languages, and Stripe, Trustly, Klarna and Altapay for payments.</p>
+            <ul class="tags"><li>Next.js</li><li>TypeScript</li><li>Stripe</li><li>AWS</li></ul>
+          </div>
+        </article>
+
+        <article class="case case--brief">
+          <div class="case__head">
+            <h3>Indexon — eCommerce accounting ERP</h3>
+            <p class="case__org">Strativ BD</p>
+          </div>
+          <div class="case__body">
+            <p>A full-stack accounting ERP in Go, Webix and TypeScript, syncing orders and inventory across Shopify, Magento and WooCommerce so the books reconcile without a CSV export.</p>
+            <ul class="tags"><li>Go</li><li>TypeScript</li><li>Shopify</li><li>Magento</li></ul>
+          </div>
+        </article>
+
+        <article class="case case--brief">
+          <div class="case__head">
+            <h3>Rental management platforms</h3>
+            <p class="case__org">Texada Software</p>
+          </div>
+          <div class="case__body">
+            <p>Rental products across React, PHP Phalcon and Django in a fully remote Agile team, plus an AI product description generator, backed by Jest and Pytest suites.</p>
+            <ul class="tags"><li>React</li><li>PHP Phalcon</li><li>Django</li><li>Pytest</li></ul>
+          </div>
+        </article>
+
+        <article class="case case--brief">
+          <div class="case__head">
+            <h3>Multi-tenant headless platform</h3>
+            <p class="case__org">Strativ BD</p>
+          </div>
+          <div class="case__body">
+            <p>A multi-tenant platform on Payload CMS and Next.js, a type-safe Strapi setup with GraphQL codegen, and a WordPress migration worth a 150% performance gain.</p>
+            <ul class="tags"><li>Payload CMS</li><li>Strapi</li><li>GraphQL</li><li>Next.js</li></ul>
+          </div>
+        </article>
+
+        <article class="case case--brief">
+          <div class="case__head">
+            <h3>GDPR email-encryption plugin</h3>
+            <p class="case__org">Strativ BD</p>
+          </div>
+          <div class="case__body">
+            <p>A WordPress plugin providing end-to-end email encryption, so customer correspondence stayed compliant without changing how the team worked.</p>
+            <ul class="tags"><li>PHP</li><li>WordPress</li><li>Cryptography</li><li>GDPR</li></ul>
+          </div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ───────────────────────── SERVICES ───────────────────────── -->
+  <section class="sec" id="services">
+    <div class="wrap">
+      <header class="sec-head">
+        <p class="eyebrow">02 — How I engage</p>
+        <h2 class="sec-title">How you can hire me.</h2>
+      </header>
+
+      <div class="svc__grid">
+        <article class="svc">
+          <p class="svc__no">A</p>
+          <h3>Full-time</h3>
+          <ul class="svc__list">
+            <li>Backend and full-stack roles across seniority levels</li>
+            <li>Remote, international teams</li>
+            <li>Long-term ownership of product and platform work</li>
+          </ul>
+        </article>
+
+        <article class="svc">
+          <p class="svc__no">B</p>
+          <h3>Part-time</h3>
+          <ul class="svc__list">
+            <li>A recurring weekly commitment alongside your team</li>
+            <li>Technical ownership without a full-time hire</li>
+            <li>Product, architecture, and delivery support</li>
+          </ul>
+        </article>
+
+        <article class="svc">
+          <p class="svc__no">C</p>
+          <h3>Contract / B2B</h3>
+          <ul class="svc__list">
+            <li>Fixed-scope builds, rescues, and technical audits</li>
+            <li>Architecture through production implementation</li>
+            <li>Clear deliverables, milestones, and handover</li>
+          </ul>
+        </article>
+      </div>
+
+      <div class="svc__actions">
+        <a class="btn btn--accent"
+           href="https://calendar.app.google/BoDFLEuxzedu7jU39"
+           target="_blank" rel="noopener noreferrer">Book a call</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ───────────────────────── STACK ───────────────────────── -->
+  <section class="band" id="stack">
+    <div class="wrap">
+      <header class="sec-head">
+        <p class="eyebrow">03 — Stack</p>
+        <h2 class="sec-title">Tools I reach for.</h2>
+      </header>
+
+      <div class="stack__grid">
+        <div class="stack__col">
+          <h3>Languages</h3>
+          <ul class="tags tags--lg">
+            <li>TypeScript</li><li>JavaScript</li><li>Go</li><li>Python</li><li>PHP</li><li>SQL</li><li>GraphQL</li>
+          </ul>
+        </div>
+        <div class="stack__col">
+          <h3>Frontend</h3>
+          <ul class="tags tags--lg">
+            <li>React</li><li>Next.js</li><li>Astro</li><li>Tailwind</li>
+          </ul>
+        </div>
+        <div class="stack__col">
+          <h3>Backend</h3>
+          <ul class="tags tags--lg">
+            <li>Node.js</li><li>Express</li><li>Gin</li><li>Kafka</li><li>BullMQ</li><li>Asynq</li><li>Redis</li><li>REST</li><li>gRPC</li><li>WebSocket</li><li>Django</li><li>Laravel</li><li>CodeIgniter</li><li>Strapi</li><li>Payload CMS</li>
+          </ul>
+        </div>
+        <div class="stack__col">
+          <h3>Data</h3>
+          <ul class="tags tags--lg">
+            <li>PostgreSQL</li><li>MySQL</li><li>MongoDB</li><li>NoSQL</li><li>PostGIS</li><li>PgBouncer</li>
+          </ul>
+        </div>
+        <div class="stack__col">
+          <h3>Cloud &amp; tooling</h3>
+          <ul class="tags tags--lg">
+            <li>AWS</li><li>GCP</li><li>DigitalOcean</li><li>Vercel</li><li>Docker</li><li>Kubernetes</li><li>Helm</li><li>Traefik</li><li>Grafana</li><li>Sentry</li><li>MinIO</li><li>Git</li><li>CI/CD</li><li>Agile</li>
+          </ul>
+        </div>
+        <div class="stack__col">
+          <h3>Payments</h3>
+          <ul class="tags tags--lg">
+            <li>Stripe</li><li>Trustly</li><li>Klarna</li><li>Altapay</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="soft">
+        <h3>Beyond code</h3>
+        <p>Team leadership · project management · DevOps &amp; cloud architecture · CI/CD pipelines · unit testing · code review · mentoring · clear written communication</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ───────────────────────── PRINCIPLES ───────────────────────── -->
+  <section class="sec" id="principles">
+    <div class="wrap principles__wrap">
+        <header class="sec-head sec-head--sticky">
+          <p class="eyebrow">04 — How I work</p>
+          <h2 class="sec-title">What working with me looks like.</h2>
+        </header>
+        <ol class="rules">
+          <li>
+            <h3>Start with the problem</h3>
+            <p>Tell me what needs to change and why. I'll work out a path, raise risks early, and keep you close to the decisions as the work moves toward production.</p>
+          </li>
+          <li>
+            <h3>Remote, async, and international</h3>
+            <p>I've worked remotely across Bangladesh, the Netherlands, and Canada. I default to written updates and make time for calls when a conversation will move the work forward.</p>
+          </li>
+          <li>
+            <h3>Match the explanation to the audience</h3>
+            <p>Engineers need the trade-offs; stakeholders need the impact, timing, and constraints. I try to make both versions clear without changing the underlying decision.</p>
+          </li>
+          <li>
+            <h3>Measure before changing things</h3>
+            <p>I prefer logs, profiles, and real usage to a confident guess. The aim is the smallest change that solves the actual problem and is safe to keep.</p>
+          </li>
+        </ol>
+    </div>
+  </section>
+
+  <!-- ───────────────────────── CONTACT ───────────────────────── -->
+  <section class="cta" id="contact">
+    <div class="wrap cta__inner">
+      <p class="eyebrow eyebrow--invert">05 — Next step</p>
+      <h2 class="cta__title">Got something stuck?<br>Let's look at it together.</h2>
+      <p class="cta__body">Send the shape of the problem — a repo, a diagram, or three paragraphs of frustration. I'll reply with what I'd do first and what it would take.</p>
+      <div class="cta__actions">
+        <a class="btn btn--accent btn--lg"
+           href="https://calendar.app.google/BoDFLEuxzedu7jU39"
+           target="_blank" rel="noopener noreferrer">Book a call</a>
+        <a class="btn btn--outline btn--lg" href="mailto:ih.tonmoy@gmail.com">ih.tonmoy@gmail.com</a>
+        <a class="btn btn--outline btn--lg" href="tel:+8801622700036">+880 16227 00036</a>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-foot">
+  <div class="wrap foot__grid">
+    <div class="foot__brand">
+      <p class="foot__name">Ishtiaq Hossain</p>
+      <p class="foot__role">Fullstack Developer · Dhaka, Bangladesh</p>
+    </div>
+    <nav class="foot__nav" aria-label="Footer">
+      <p class="foot__label">Sections</p>
+      <a href="#experience">Experience</a>
+      <a href="#services">Services</a>
+      <a href="#stack">Stack</a>
+    </nav>
+    <div class="foot__nav">
+      <p class="foot__label">Elsewhere</p>
+      <a href="https://ishtiaq.dev">ishtiaq.dev</a>
+      <a href="mailto:ih.tonmoy@gmail.com">Email</a>
+      <a href="tel:+8801622700036">Phone</a>
+    </div>
+    <p class="foot__copy">© 2026 Ishtiaq Hossain. Built with hand-written HTML and CSS.</p>
+  </div>
+</footer>
+
+<script src="script.js" defer></script>
+<script type="module" src="pet.js"></script>
+
+</body>
+</html>

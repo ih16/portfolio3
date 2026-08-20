@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Finishing a job after the user has gone — Ishtiaq Hossain</title>
+<meta name="description" content="Connecting a data source when the slow part completes long after the page has closed.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../styles.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><path fill='%23008080' d='M0 0H100V100H58.018V83.964H83.964V58.018H58.018V41.982H83.964V16.036H16.036V41.982H41.982V58.018H16.036V83.964H41.982V100H0Z'/></svg>">
+</head>
+<body>
+
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="site-head">
+  <div class="wrap head-inner">
+    <div class="brand">
+      <span class="brand__mark" aria-hidden="true"></span>
+      <a class="brand__name" href="../index.html">Ishtiaq Hossain</a>
+    </div>
+    <nav class="nav" aria-label="Primary">
+      <a href="../index.html#work">Work</a>
+      <a href="../index.html#experience">Experience</a>
+      <a href="../index.html#stack">Stack</a>
+    </nav>
+    <a class="btn btn--accent btn--sm"
+       href="https://calendar.app.google/BoDFLEuxzedu7jU39"
+       target="_blank" rel="noopener noreferrer">Book a call</a>
+  </div>
+</header>
+
+<main id="main">
+
+  <article class="cs">
+    <header class="cs-head wrap">
+      <p class="eyebrow">Case study 03 — Anlytic</p>
+      <h1 class="cs-title">Finishing a job after the user has gone</h1>
+      <p class="cs-lede">Connecting a data source when the slow part completes long after the page has closed.</p>
+      <ul class="tags"><li>Hands-on engineer</li><li>Go</li><li>gRPC</li><li>PostgreSQL</li></ul>
+    </header>
+
+    <div class="wrap">
+      <div class="cs-facts">
+          <div class="cs-fact"><p class="cs-fact__val">0</p><p class="cs-fact__label">reliance on an open tab</p></div>
+          <div class="cs-fact"><p class="cs-fact__val">Resumable</p><p class="cs-fact__label">across restarts</p></div>
+          <div class="cs-fact"><p class="cs-fact__val">Unattended</p><p class="cs-fact__label">completion</p></div>
+      </div>
+
+      <section class="cs-block">
+        <h2 class="cs-h">The problem</h2>
+        <p>Connecting a source runs from credentials through authentication and a first import, and only then is anything usable. That import is asynchronous and can take minutes or hours, which rules out doing the remaining work inside the request that started it.</p>
+      </section>
+
+      <section class="cs-block">
+        <h2 class="cs-h">How it fits together</h2>
+      </section>
+
+      <figure class="cs-fig">
+        <svg class="dg" viewBox="0 0 720 190" role="img" aria-labelledby="dg-connectors">
+          <title id="dg-connectors">Work continuing after the request ends</title>
+          <defs>
+      <marker id="a" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto">
+        <path d="M0 0 L8 4 L0 8 z" class="head"/></marker>
+      <marker id="ak" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto">
+        <path d="M0 0 L8 4 L0 8 z" class="head--k"/></marker>
+    </defs>
+          <circle cx="46" cy="86" r="26" class="sh"/><text x="46" y="90" text-anchor="middle" class="t">start</text><path d="M76 86 H132" class="ln flow" marker-end="url(#a)"/><rect x="138" y="58" width="108" height="56" rx="7" class="sh"/><text x="192" y="82" text-anchor="middle" class="t">set up</text><text x="192" y="98" text-anchor="middle" class="s">in request</text><path d="M268 22 V150" class="ln--x"/><text x="276" y="30" text-anchor="start" class="s">request ends here</text><path d="M250 86 H300" class="ln flow flow--slow" marker-end="url(#a)"/><polygon points="309.0,86 344.55,54.0 431.45,54.0 467.0,86 431.45,118.0 344.55,118.0" class="sh--k" class="sh--k pulse"/><text x="388" y="82" text-anchor="middle" class="k">background work</text><text x="388" y="98" text-anchor="middle" class="s">retries, survives restart</text><path d="M470 86 H530" class="ln--k flow flow--slow" marker-end="url(#ak)"/><path d="M536 65 a54.0 7 0 0 1 108 0 v44 a54.0 7 0 0 1 -108 0 z" class="sh"/><path d="M536 65 a54.0 7 0 0 0 108 0" class="sh" fill="none"/><text x="590" y="92" text-anchor="middle" class="t">ready</text><text x="388" y="168" text-anchor="middle" class="s">the tab may be long closed by now</text>
+        </svg>
+        <figcaption>The visible part finishes in seconds. The rest completes on its own, whether or not anyone is still there.</figcaption>
+      </figure>
+
+      <section class="cs-block">
+        <h2 class="cs-h">What I did</h2>
+        <div class="cs-step">
+          <h3>Move it off the request</h3>
+          <p>The slow half runs in the background from the moment setup completes, with backoff, protection against starting twice, and recovery if the process restarts.</p>
+        </div>
+        <div class="cs-step">
+          <h3>Own the finish</h3>
+          <p>When the upstream side is finally ready, the service completes the remaining setup by itself. The user returns to something already working.</p>
+        </div>
+        <div class="cs-step">
+          <h3>Behave at the boundary</h3>
+          <p>External failures are translated into something a person can act on, and outbound calls are paced to stay within limits.</p>
+        </div>
+      </section>
+
+      <section class="cs-block">
+        <h2 class="cs-h">The hard part</h2>
+        <p class="cs-pull">Every step had to survive a closed tab and a restart. Once you accept that nobody is watching, the work has to own its own completion, including knowing whether it already began.</p>
+      </section>
+
+      <section class="cs-block">
+        <h2 class="cs-h">Stack</h2>
+        <ul class="tags tags--lg"><li>Go</li><li>gRPC</li><li>PostgreSQL</li><li>React</li></ul>
+        <p class="cs-note">Written at the level the reasoning survives. Internal
+        specifics are left out on purpose.</p>
+      </section>
+
+      <nav class="cs-nav" aria-label="Case studies">
+        <a class="cs-nav__link" href="billing.html">← Telling two payment failures apart</a>
+        <a class="cs-nav__link cs-nav__link--next" href="database-pools.html">Letting idle resources sleep, safely →</a>
+      </nav>
+
+      <p class="cs-back"><a href="../index.html#work">← All work</a></p>
+    </div>
+  </article>
+
+</main>
+
+<section class="cta">
+  <div class="wrap cta__inner">
+    <p class="eyebrow eyebrow--invert">Next step</p>
+    <h2 class="cta__title">Got something stuck?<br>Let's look at it together.</h2>
+    <p class="cta__body">Send the shape of the problem — a repo, a diagram, or three paragraphs of frustration. I'll reply with what I'd do first and what it would take.</p>
+    <div class="cta__actions">
+      <a class="btn btn--accent btn--lg" href="mailto:ih.tonmoy@gmail.com">ih.tonmoy@gmail.com</a>
+      <a class="btn btn--outline btn--lg" href="tel:+8801622700036">+880 16227 00036</a>
+    </div>
+  </div>
+</section>
+
+<footer class="site-foot">
+  <div class="wrap foot__grid">
+    <div class="foot__brand">
+      <p class="foot__name">Ishtiaq Hossain</p>
+      <p class="foot__role">Fullstack Developer · Dhaka, Bangladesh</p>
+    </div>
+    <nav class="foot__nav" aria-label="Footer">
+      <p class="foot__label">Sections</p>
+      <a href="../index.html#work">Work</a>
+      <a href="../index.html#experience">Experience</a>
+      <a href="../index.html#stack">Stack</a>
+    </nav>
+    <div class="foot__nav">
+      <p class="foot__label">Elsewhere</p>
+      <a href="https://ishtiaq.dev">ishtiaq.dev</a>
+      <a href="mailto:ih.tonmoy@gmail.com">Email</a>
+      <a href="tel:+8801622700036">Phone</a>
+    </div>
+    <p class="foot__copy">© 2026 Ishtiaq Hossain. Built with hand-written HTML and CSS.</p>
+  </div>
+</footer>
+
+</body>
+</html>
