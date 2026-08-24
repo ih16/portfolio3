@@ -60,6 +60,7 @@
   --font-mono:    "JetBrains Mono", ui-monospace, "SFMono-Regular", monospace;
 
   --wrap: 1180px;
+  --header-h: 67px; /* 66px inner height plus the header's 1px border */
   --s1: .5rem;  --s2: .75rem; --s3: 1rem;   --s4: 1.5rem;
   --s5: 2rem;   --s6: 3rem;   --s7: 4.5rem; --s8: 7rem;
 
@@ -165,6 +166,19 @@ body {
 .sec  { padding-block: var(--s8); }
 .band { padding-block: var(--s8); background: var(--paper-2); border-block: 1px solid var(--line-soft); }
 
+/* Work normally supplies the first alternate band. While it is launch-hidden,
+   shift the following treatments forward; removing `hidden` restores the
+   original Experience → Work → Services → Stack → Principles sequence. */
+#work[hidden] ~ #services,
+#work[hidden] ~ #principles {
+  background: var(--paper-2);
+  border-block: 1px solid var(--line-soft);
+}
+#work[hidden] ~ #stack {
+  background: var(--paper);
+  border-block: 0;
+}
+
 /* ---------- buttons ---------- */
 .btn {
   display: inline-flex; align-items: center; justify-content: center;
@@ -203,7 +217,7 @@ body {
 }
 .head-inner {
   display: flex; align-items: center; gap: var(--s4);
-  min-height: 66px;
+  min-height: calc(var(--header-h) - 1px);
 }
 .brand { display: flex; align-items: center; gap: .6rem; margin-right: auto; }
 .brand__name {
@@ -228,6 +242,9 @@ body {
   position: relative;
   isolation: isolate;   /* confine the glow's blending to this section */
   overflow: hidden;
+  /* Match the natural page load to the position produced by the #top anchor:
+     the sticky header remains visible while the hero begins behind it. */
+  margin-top: calc(0px - var(--header-h));
   padding-block: clamp(3.5rem, 9vw, 7.5rem) var(--s6);
   min-height: min(86vh, 780px);
   display: flex;
