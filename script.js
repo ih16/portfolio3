@@ -1,6 +1,7 @@
 /* ============================================================
-   Hero pointer effects — the only JavaScript on the page.
-   It feeds the real pointer position to three things:
+   Hero backdrop and pointer effects — the only JavaScript on the page.
+   It keeps each marquee track wide enough for a seamless loop, then feeds
+   the real pointer position to three things:
      .hero__glow     the cursor light  (heaviest lag, smears when moving)
      .cursor__trail  ghosts bridging the gap between cursor and light
      .hero__cursor   the emitter — aura lags slightly, filament is exact
@@ -12,6 +13,55 @@
   const hero = document.querySelector('.hero');
   if (!hero) return;
 
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+  /* ---- marquee coverage ---------------------------------------------
+     Two equal tracks loop cleanly only when either one can cover the visible
+     row by itself. Repeat each verified base sequence in whole cycles until
+     it does, then lengthen the duration by the same factor so its speed does
+     not jump on wide screens. */
+  const marqueeStates = [...hero.querySelectorAll('.marquee')].map((marquee) => {
+    const inner = marquee.querySelector('.marquee__inner');
+    const tracks = inner ? [...inner.querySelectorAll('.marquee__track')] : [];
+    if (!inner || tracks.length !== 2) return null;
+
+    const templates = [...tracks[0].children].map((item) => item.cloneNode(true));
+    const baseDuration = Number.parseFloat(getComputedStyle(inner).animationDuration) || 44;
+    return { marquee, inner, tracks, templates, baseDuration, cycles: 1 };
+  }).filter(Boolean);
+
+  const fillMarquees = () => {
+    if (reduced.matches) return;
+
+    for (const state of marqueeStates) {
+      const gap = Number.parseFloat(getComputedStyle(state.tracks[0]).gap) || 0;
+      const targetWidth = state.marquee.clientWidth + gap * 2;
+
+      while (state.tracks[0].offsetWidth < targetWidth && state.cycles < 16) {
+        for (const track of state.tracks) {
+          for (const template of state.templates) track.appendChild(template.cloneNode(true));
+        }
+        state.cycles += 1;
+      }
+
+      state.inner.style.animationDuration = `${state.baseDuration * state.cycles}s`;
+    }
+  };
+
+  let marqueeFrame = 0;
+  const queueMarqueeFill = () => {
+    if (marqueeFrame) return;
+    marqueeFrame = requestAnimationFrame(() => {
+      marqueeFrame = 0;
+      fillMarquees();
+    });
+  };
+
+  queueMarqueeFill();
+  window.addEventListener('resize', queueMarqueeFill, { passive: true });
+  reduced.addEventListener('change', queueMarqueeFill);
+  if (document.fonts) document.fonts.ready.then(queueMarqueeFill);
+
   const glow   = hero.querySelector('.hero__glow');
   const cursor = hero.querySelector('.hero__cursor');
   const ring   = cursor && cursor.querySelector('.cursor__ring');
@@ -20,8 +70,6 @@
 
   // needs a real pointer — no cursor to replace on touch
   if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
-
-  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
 
   // only hide the system cursor once we know we can draw a replacement,
   // so a script failure never leaves the hero with no cursor at all

@@ -242,11 +242,13 @@ body {
   position: relative;
   isolation: isolate;   /* confine the glow's blending to this section */
   overflow: hidden;
-  /* Match the natural page load to the position produced by the #top anchor:
-     the sticky header remains visible while the hero begins behind it. */
-  margin-top: calc(0px - var(--header-h));
-  padding-block: clamp(3.5rem, 9vw, 7.5rem) var(--s6);
-  min-height: min(86vh, 780px);
+  /* The header stays in normal flow; the hero fills only the viewport left
+     beneath it, and #top returns to that same unobscured position. */
+  scroll-margin-top: var(--header-h);
+  /* Equal top and bottom padding keeps the grid on the hero's true midpoint. */
+  padding-block: clamp(var(--s6), 6vw, var(--s7));
+  min-height: calc(100vh - var(--header-h));
+  min-height: calc(100svh - var(--header-h));
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -982,15 +984,21 @@ body {
 
 .marquee__inner {
   display: flex;
-  gap: var(--mq-gap);
   width: max-content;
   will-change: transform;
   animation: mq-scroll var(--mq-dur, 44s) linear infinite;
 }
-.marquee__track { display: flex; gap: var(--mq-gap); flex: none; }
+.marquee__track {
+  display: flex;
+  gap: var(--mq-gap);
+  flex: none;
+  /* The seam gap belongs inside each equal-width half. An outer flex gap
+     would make -50% stop half a gap short and reveal the animation restart. */
+  padding-right: var(--mq-gap);
+}
 
-/* two identical tracks separated by --mq-gap means -50% lands exactly
-   one track further along: the loop point is invisible */
+/* Two identical tracks, each including its trailing seam gap, make the second
+   track start at exactly 50% of the strip. */
 @keyframes mq-scroll {
   from { transform: translateX(0); }
   to   { transform: translateX(-50%); }
@@ -1282,7 +1290,7 @@ body {
   .foot__brand { grid-column: 1 / -1; }
   .hero__cta .btn, .cta__actions .btn { flex: 1 1 auto; }
   .chip { font-size: .74rem; padding: .5rem .8rem; }
-  .hero { min-height: 0; --mq-gap: .45rem; }
+  .hero { --mq-gap: .45rem; }
   .hero__bg { opacity: calc(var(--bg-opacity) * .8); }
   .hero__title { font-size: clamp(1.65rem, 8vw, 2.4rem); }
   .specs { max-width: none; }
