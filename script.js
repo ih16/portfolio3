@@ -1,7 +1,8 @@
 /* ============================================================
    Hero backdrop and pointer effects — the only JavaScript on the page.
-   It keeps each marquee track wide enough for a seamless loop, then feeds
-   the real pointer position to three things:
+   It builds the backdrop's vertical loop, keeps each horizontal marquee
+   track wide enough for a seamless loop, then feeds the real pointer
+   position to three things:
      .hero__glow     the cursor light  (heaviest lag, smears when moving)
      .cursor__trail  ghosts bridging the gap between cursor and light
      .hero__cursor   the emitter — aura lags slightly, filament is exact
@@ -14,6 +15,53 @@
   if (!hero) return;
 
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+  /* ---- vertical backdrop flow ---------------------------------------
+     A second identical row set sits directly above the source set. Moving
+     the two-set strip down by one viewport makes new rows enter at the top;
+     the identical endpoints let it reset without revealing the loop. */
+  const backdrop = hero.querySelector('.hero__bg');
+  const backdropFlow = backdrop && backdrop.querySelector('.hero__bg-flow');
+  const backdropSet = backdropFlow && backdropFlow.querySelector('.hero__bg-set');
+
+  if (backdrop && backdropFlow && backdropSet && backdropFlow.children.length === 1) {
+    const leadingSet = backdropSet.cloneNode(true);
+    leadingSet.setAttribute('aria-hidden', 'true');
+    backdropFlow.prepend(leadingSet);
+    backdrop.classList.add('hero__bg--flowing');
+  }
+
+  /* Tie the vertical loop directly to document scroll at half speed. Positive
+     scroll moves the rows down; negative scroll moves them up. Normalising by
+     one complete set lets either edge wrap without a jump. */
+  let backdropFrame = 0;
+  const BACKDROP_SCROLL_RATIO = 0.5;
+  const syncBackdropFlow = () => {
+    backdropFrame = 0;
+    if (!backdropFlow || !backdropSet) return;
+
+    if (reduced.matches) {
+      backdropFlow.style.removeProperty('translate');
+      return;
+    }
+
+    const setHeight = backdropSet.offsetHeight;
+    if (!setHeight) return;
+
+    const scrollDistance = window.scrollY * BACKDROP_SCROLL_RATIO;
+    const phase = ((scrollDistance % setHeight) + setHeight) % setHeight;
+    backdropFlow.style.translate = `0 ${phase - setHeight}px`;
+  };
+
+  const queueBackdropSync = () => {
+    if (backdropFrame) return;
+    backdropFrame = requestAnimationFrame(syncBackdropFlow);
+  };
+
+  queueBackdropSync();
+  window.addEventListener('scroll', queueBackdropSync, { passive: true });
+  window.addEventListener('resize', queueBackdropSync, { passive: true });
+  reduced.addEventListener('change', queueBackdropSync);
 
   /* ---- marquee coverage ---------------------------------------------
      Two equal tracks loop cleanly only when either one can cover the visible

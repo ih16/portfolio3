@@ -101,6 +101,7 @@
 /* ---------- reset ---------- */
 *, *::before, *::after { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+html, body { overscroll-behavior-y: none; }
 body, h1, h2, h3, p, ul, ol, dl, dd, figure { margin: 0; padding: 0; }
 ul, ol { list-style: none; }
 img { max-width: 100%; display: block; }
@@ -163,8 +164,17 @@ body {
   margin-top: var(--s3);
 }
 
-.sec  { padding-block: var(--s8); }
+.sec  { padding-block: var(--s8); background: var(--paper); }
 .band { padding-block: var(--s8); background: var(--paper-2); border-block: 1px solid var(--line-soft); }
+
+/* The hero backdrop is viewport-fixed. Keep every following section in a
+   higher layer with an opaque background so it scrolls cleanly over the
+   marquee instead of letting the chips bleed through the page. */
+main > section:not(.hero),
+.site-foot {
+  position: relative;
+  z-index: 4;
+}
 
 /* Work normally supplies the first alternate band. While it is launch-hidden,
    shift the following treatments forward; removing `hidden` restores the
@@ -240,6 +250,7 @@ body {
 /* ---------- hero ---------- */
 .hero {
   position: relative;
+  z-index: 0;
   isolation: isolate;   /* confine the glow's blending to this section */
   overflow: hidden;
   /* The header stays in normal flow; the hero fills only the viewport left
@@ -943,17 +954,38 @@ body {
 /* ---------- hero backdrop marquee ---------- */
 .hero__bg {
   --mq-gap: .6rem;
-  position: absolute;
-  inset: 0;
+  /* Pin only the decorative backdrop; the hero copy remains in normal flow.
+     Following sections paint above this layer and cover it as they enter. */
+  position: fixed;
+  inset: var(--header-h) 0 0;
   z-index: 1;
-  display: grid;
-  align-content: space-evenly;
-  gap: var(--mq-gap);
+  overflow: hidden;
   pointer-events: none;   /* decorative — must never eat a click */
   user-select: none;
   opacity: var(--bg-opacity);
   -webkit-mask-image: linear-gradient(180deg, transparent, #000 14%, #000 86%, transparent);
           mask-image: linear-gradient(180deg, transparent, #000 14%, #000 86%, transparent);
+}
+
+.hero__bg-flow,
+.hero__bg-set { height: 100%; }
+
+.hero__bg-set {
+  display: grid;
+  /* Equal-height slots keep every row centre the same distance apart,
+     including the last-to-first join between the two looping sets. */
+  grid-template-rows: repeat(7, minmax(0, 1fr));
+  align-items: center;
+}
+
+/* JS adds the leading copy before enabling this motion, so the no-script
+   fallback remains a single, correctly spaced set of rows. */
+.hero__bg--flowing .hero__bg-flow {
+  height: 200%;
+  display: grid;
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  translate: 0 -50%;
+  will-change: translate;
 }
 
 /* scrim so the headline never fights the chips behind it */
@@ -1037,6 +1069,7 @@ body {
     -webkit-overflow-scrolling: touch;
   }
   .marquee__track[aria-hidden="true"] { display: none; }
+  .hero__bg--flowing .hero__bg-flow { translate: 0 -50% !important; }
 }
 .soft {
   margin-top: var(--s6);
@@ -1300,7 +1333,7 @@ body {
 
 /* ---------- print ---------- */
 @media print {
-  .site-head, .cta__actions, .hero__cta, .site-foot { display: none; }
+  .site-head, .cta__actions, .hero__cta, .hero__bg, .site-foot { display: none; }
   body { background: #fff; color: #000; font-size: 11pt; }
   .sec, .band, .hero { padding-block: 1rem; }
   .case, .role { break-inside: avoid; }
