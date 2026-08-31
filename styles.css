@@ -1,7 +1,7 @@
 /* ============================================================
    Ishtiaq Hossain — portfolio
    Hand-written CSS. No framework. One small script (script.js)
-   feeds the hero glow the pointer position; nothing else needs JS.
+   handles smooth scrolling and the hero's backdrop and pointer effects.
    ============================================================ */
 
 /* ---------- tokens ----------
@@ -100,7 +100,7 @@
 
 /* ---------- reset ---------- */
 *, *::before, *::after { box-sizing: border-box; }
-html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+html { -webkit-text-size-adjust: 100%; }
 html, body { overscroll-behavior-y: none; }
 body, h1, h2, h3, p, ul, ol, dl, dd, figure { margin: 0; padding: 0; }
 ul, ol { list-style: none; }

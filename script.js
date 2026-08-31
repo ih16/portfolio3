@@ -1,8 +1,8 @@
 /* ============================================================
-   Hero backdrop and pointer effects — the only JavaScript on the page.
-   It builds the backdrop's vertical loop, keeps each horizontal marquee
-   track wide enough for a seamless loop, then feeds the real pointer
-   position to three things:
+   Page scrolling, hero backdrop and pointer effects — the only JavaScript
+   on the page. It smooths wheel and anchor scrolling, builds the backdrop's
+   vertical loop, keeps each horizontal marquee track wide enough for a
+   seamless loop, then feeds the real pointer position to three things:
      .hero__glow     the cursor light  (heaviest lag, smears when moving)
      .cursor__trail  ghosts bridging the gap between cursor and light
      .hero__cursor   the emitter — aura lags slightly, filament is exact
@@ -15,6 +15,76 @@
   if (!hero) return;
 
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
+  const finePointer = window.matchMedia('(hover: hover) and (pointer: fine)');
+
+  /* ---- smooth page scrolling ---------------------------------------
+     Wheel input updates a destination; one small RAF loop eases the page
+     towards it. Touch, keyboard and reduced-motion scrolling stay native. */
+  let smoothY = window.scrollY;
+  let smoothTargetY = smoothY;
+  let smoothFrame = 0;
+
+  const maxScrollY = () => Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+  const clampScrollY = (value) => Math.min(maxScrollY(), Math.max(0, value));
+
+  const smoothStep = () => {
+    const distance = smoothTargetY - smoothY;
+    smoothY += distance * 0.14;
+
+    if (Math.abs(distance) < 0.5) {
+      smoothY = smoothTargetY;
+      smoothFrame = 0;
+    } else {
+      smoothFrame = requestAnimationFrame(smoothStep);
+    }
+
+    window.scrollTo(0, smoothY);
+  };
+
+  const smoothTo = (nextY) => {
+    smoothTargetY = clampScrollY(nextY);
+    if (smoothFrame) return;
+    smoothY = window.scrollY;
+    smoothFrame = requestAnimationFrame(smoothStep);
+  };
+
+  const cancelSmoothScroll = () => {
+    if (smoothFrame) cancelAnimationFrame(smoothFrame);
+    smoothFrame = 0;
+    smoothY = smoothTargetY = window.scrollY;
+  };
+
+  window.addEventListener('wheel', (event) => {
+    if (reduced.matches || !finePointer.matches || event.ctrlKey ||
+        Math.abs(event.deltaX) > Math.abs(event.deltaY) || !event.deltaY) return;
+
+    event.preventDefault();
+    const unit = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? window.innerHeight : 1;
+    smoothTo(smoothTargetY + event.deltaY * unit);
+  }, { passive: false });
+
+  document.addEventListener('click', (event) => {
+    const link = event.target.closest('a[href^="#"]');
+    if (!link || reduced.matches) return;
+
+    const id = decodeURIComponent(link.hash.slice(1));
+    const destination = id ? document.getElementById(id) : document.documentElement;
+    if (!destination) return;
+
+    event.preventDefault();
+    const margin = Number.parseFloat(getComputedStyle(destination).scrollMarginTop) || 0;
+    smoothTo(window.scrollY + destination.getBoundingClientRect().top - margin);
+    if (window.location.hash !== link.hash) history.pushState(null, '', link.hash);
+  });
+
+  window.addEventListener('scroll', () => {
+    if (!smoothFrame) smoothY = smoothTargetY = window.scrollY;
+  }, { passive: true });
+  window.addEventListener('pointerdown', cancelSmoothScroll, { passive: true });
+  window.addEventListener('resize', () => {
+    smoothTargetY = clampScrollY(smoothTargetY);
+  }, { passive: true });
+  reduced.addEventListener('change', cancelSmoothScroll);
 
   /* ---- vertical backdrop flow ---------------------------------------
      A second identical row set sits directly above the source set. Moving
@@ -31,11 +101,11 @@
     backdrop.classList.add('hero__bg--flowing');
   }
 
-  /* Tie the vertical loop directly to document scroll at half speed. Positive
+  /* Tie the vertical loop directly to document scroll at quarter speed. Positive
      scroll moves the rows down; negative scroll moves them up. Normalising by
      one complete set lets either edge wrap without a jump. */
   let backdropFrame = 0;
-  const BACKDROP_SCROLL_RATIO = 0.5;
+  const BACKDROP_SCROLL_RATIO = 0.25;
   const syncBackdropFlow = () => {
     backdropFrame = 0;
     if (!backdropFlow || !backdropSet) return;
@@ -117,7 +187,7 @@
   if (!glow && !cursor) return;
 
   // needs a real pointer — no cursor to replace on touch
-  if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
+  if (!finePointer.matches) return;
 
   // only hide the system cursor once we know we can draw a replacement,
   // so a script failure never leaves the hero with no cursor at all
