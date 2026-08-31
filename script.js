@@ -180,6 +180,32 @@
   reduced.addEventListener('change', queueMarqueeFill);
   if (document.fonts) document.fonts.ready.then(queueMarqueeFill);
 
+  /* ---- backdrop ripple ---------------------------------------------
+     A pointer click drops a temporary ring into the fixed backdrop. The
+     diameter reaches the furthest viewport corner, so it reads as one wave
+     passing through the marquee rather than a decorative circle. */
+  hero.addEventListener('click', (event) => {
+    if (!backdrop || reduced.matches || event.detail === 0) return;
+
+    const rect = backdrop.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+    const reachX = Math.max(x, rect.width - x);
+    const reachY = Math.max(y, rect.height - y);
+    const ripple = document.createElement('span');
+
+    ripple.className = 'hero__ripple';
+    ripple.style.left = `${x}px`;
+    ripple.style.top = `${y}px`;
+    ripple.style.setProperty('--ripple-size', `${Math.hypot(reachX, reachY) * 2}px`);
+
+    const existing = backdrop.querySelectorAll('.hero__ripple');
+    if (existing.length >= 4) existing[0].remove();
+
+    backdrop.appendChild(ripple);
+    ripple.addEventListener('animationend', () => ripple.remove(), { once: true });
+  }, { passive: true });
+
   const glow   = hero.querySelector('.hero__glow');
   const cursor = hero.querySelector('.hero__cursor');
   const ring   = cursor && cursor.querySelector('.cursor__ring');

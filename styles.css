@@ -988,6 +988,45 @@ main > section:not(.hero),
   will-change: translate;
 }
 
+/* Click easter egg: a short-lived wave brightens the chips it crosses. Width
+   and height animate instead of transform, so the one-pixel rings stay crisp
+   as they expand. */
+.hero__ripple {
+  position: absolute;
+  z-index: 2;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  translate: -50% -50%;
+  border: 1px solid color-mix(in srgb, var(--accent-text) 72%, transparent);
+  border-radius: 50%;
+  pointer-events: none;
+  opacity: 0;
+  contain: layout paint;
+  box-shadow: 0 0 34px color-mix(in srgb, var(--accent) 32%, transparent);
+  -webkit-backdrop-filter: saturate(2.2) brightness(1.25);
+          backdrop-filter: saturate(2.2) brightness(1.25);
+  animation: hero-ripple 1.3s ease-out forwards;
+}
+
+.hero__ripple::before,
+.hero__ripple::after {
+  content: "";
+  position: absolute;
+  border: 1px solid color-mix(in srgb, var(--accent-text) 48%, transparent);
+  border-radius: inherit;
+}
+.hero__ripple::before { inset: 16%; }
+.hero__ripple::after  { inset: 34%; opacity: .65; }
+
+@keyframes hero-ripple {
+  0%   { width: 0; height: 0; opacity: 0; }
+  10%  { opacity: .9; }
+  68%  { opacity: .42; }
+  100% { width: var(--ripple-size); height: var(--ripple-size); opacity: 0; }
+}
+
 /* scrim so the headline never fights the chips behind it */
 .hero__bg::after {
   content: "";
@@ -1070,6 +1109,7 @@ main > section:not(.hero),
   }
   .marquee__track[aria-hidden="true"] { display: none; }
   .hero__bg--flowing .hero__bg-flow { translate: 0 -50% !important; }
+  .hero__ripple { display: none; }
 }
 .soft {
   margin-top: var(--s6);
