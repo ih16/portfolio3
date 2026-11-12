@@ -125,6 +125,38 @@ test('unchanged polling skips message reads and inbox cleanup', async () => {
   await request('inbox', undefined, { owner: true });
   assert.ok(!storageCommands.some(cmd => cmd[0] === 'ZREMRANGEBYSCORE'));
 });
+test('thread summaries count unread visitor messages and survive partial reads and legacy backfill', async () => {
+  const { saveMessage, conversation } = require('../server/store');
+  const session = (await request('session', { name: 'Summary test' })).body;
+  const id = session.conversation.id;
+  const first = { id: randomUUID(), sender: 'visitor', text: 'First', at: Date.now() };
+  await saveMessage(id, first);
+  await saveMessage(id, first);
+  await saveMessage(id, { id: randomUUID(), sender: 'owner', text: 'My reply', at: Date.now() });
+  await saveMessage(id, { id: randomUUID(), sender: 'visitor', text: 'Latest message', at: Date.now() });
+  let summary = await conversation(id);
+  assert.equal(summary.unreadCount, 2);
+  assert.equal(summary.latestText, 'Latest message');
+  assert.equal(summary.latestSender, 'visitor');
+  await request('read', { conversation: id, sequence: 1 }, { owner: true });
+  assert.equal((await conversation(id)).unreadCount, 1);
+  await request('read', { conversation: id, sequence: 0 }, { owner: true });
+  assert.equal((await conversation(id)).unreadCount, 1);
+  await redis('HDEL', key(`conversation:${id}`), 'unreadCount', 'latestText', 'latestSender');
+  summary = await conversation(id);
+  assert.equal(summary.unreadCount, 1);
+  assert.equal(summary.latestText, 'Latest message');
+  storageCommands.length = 0;
+  await conversation(id);
+  assert.deepEqual(storageCommands.map(cmd => cmd[0]), ['HGETALL']);
+  await request('read', { conversation: id, sequence: 3 }, { owner: true });
+  assert.equal((await conversation(id)).unreadCount, 0);
+  await saveMessage(id, { id: randomUUID(), sender: 'owner', text: 'Latest reply', at: Date.now() });
+  summary = await conversation(id);
+  assert.equal(summary.unreadCount, 0);
+  assert.equal(summary.latestSender, 'owner');
+  assert.equal(summary.latestText, 'Latest reply');
+});
 test('only the owner can delete a thread; deletion removes messages, session and pending pushes', async () => {
   const conversation = alice.conversation.id;
   assert.equal((await request('delete', { conversation }, alice)).status, 403);

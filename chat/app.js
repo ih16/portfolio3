@@ -151,15 +151,20 @@ async function loadMessages() {
     setThread(result.conversation);
     appendMessages(result.messages);
   } while (result.more);
+  if (owner) {
+    inboxItems = inboxItems.map(item => item.id === selected.id ? { ...selected } : item);
+    renderInbox(inboxItems);
+  }
   if (owner && sequence && result.conversation.unread && document.visibilityState === 'visible') {
     await api('read', { conversation: selected.id, sequence });
     if (current !== generation) return;
-    selected.unread = false;
-    inboxItems = inboxItems.map(item => item.id === selected.id ? { ...item, unread: false } : item);
+    selected.unread = false; selected.unreadCount = 0;
+    inboxItems = inboxItems.map(item => item.id === selected.id ? { ...selected, unread: false, unreadCount: 0 } : item);
     renderInbox(inboxItems);
   }
 }
 function renderInbox(items) {
+  items = [...items].sort((a, b) => b.updated - a.updated);
   inboxItems = items;
   const list = $('conversations');
   const focused = list.contains(document.activeElement) ? document.activeElement.dataset.focus : null;
@@ -167,12 +172,29 @@ function renderInbox(items) {
   list.replaceChildren();
   display('inbox-empty', items.length === 0);
   for (const item of items) {
-    const row = document.createElement('div'); row.className = 'chat-conversation-row';
+    const row = document.createElement('div'); row.className = 'chat-conversation-row'; row.classList.toggle('has-unread', item.unreadCount > 0);
     const button = document.createElement('button'); button.className = 'chat-conversation'; button.dataset.id = item.id; button.dataset.focus = item.id;
     button.setAttribute('aria-current', String(selected?.id === item.id));
-    const name = document.createElement('span'); name.textContent = item.name; button.append(name);
-    if (item.unread) { const badge = document.createElement('strong'); badge.textContent = 'Unread'; button.append(badge); }
-    const time = document.createElement('small'); time.textContent = (item.blocked ? 'Blocked · ' : '') + new Date(item.updated).toLocaleDateString(); button.append(time);
+    const heading = document.createElement('span'); heading.className = 'chat-conversation-heading';
+    const name = document.createElement('span'); name.className = 'chat-conversation-name'; name.textContent = item.name;
+    const date = new Date(item.updated);
+    const time = document.createElement('time'); time.dateTime = date.toISOString(); time.title = date.toLocaleString();
+    time.textContent = date.toDateString() === new Date().toDateString()
+      ? date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+      : date.toLocaleDateString([], { month: 'short', day: 'numeric', ...(date.getFullYear() !== new Date().getFullYear() ? { year: 'numeric' } : {}) });
+    heading.append(name, time);
+    const detail = document.createElement('span'); detail.className = 'chat-conversation-detail';
+    const preview = document.createElement('span'); preview.className = 'chat-conversation-preview';
+    preview.textContent = (item.blocked ? 'Blocked · ' : '') + (item.latestSender === 'owner' ? 'You: ' : '') + (item.latestText || 'No messages yet');
+    detail.append(preview);
+    if (item.unreadCount > 0) {
+      const badge = document.createElement('strong'); badge.className = 'chat-unread-count'; badge.textContent = String(item.unreadCount);
+      badge.setAttribute('aria-label', `${item.unreadCount} unread ${item.unreadCount === 1 ? 'message' : 'messages'}`); detail.append(badge);
+    }
+    const avatar = document.createElement('span'); avatar.className = 'chat-avatar'; avatar.setAttribute('aria-hidden', 'true');
+    avatar.textContent = item.name.trim().split(/\s+/).map(part => part[0]).slice(0, 2).join('').toUpperCase();
+    const copy = document.createElement('span'); copy.className = 'chat-conversation-copy'; copy.append(heading, detail);
+    button.append(avatar, copy);
     button.addEventListener('click', () => chooseConversation(item));
     const menu = document.createElement('details'); menu.className = 'chat-menu'; menu.dataset.id = item.id; menu.open = openMenu === item.id;
     const trigger = document.createElement('summary'); trigger.textContent = '⋯'; trigger.setAttribute('aria-label', `Options for ${item.name}`); trigger.dataset.focus = `menu:${item.id}`;

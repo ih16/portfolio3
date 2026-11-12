@@ -119,7 +119,7 @@ async function handler(req, res) {
     }
     if (action === 'read' && req.method === 'POST' && user.owner) {
       requireValue(Number.isSafeInteger(data.sequence) && data.sequence >= 0, 400, 'Invalid read position.');
-      await redis('EVAL', readScript, 1, key(`conversation:${id}`), data.sequence);
+      await redis('EVAL', readScript, 2, key(`conversation:${id}`), key(`messages:${id}`), data.sequence);
       return respond(200, { ok: true });
     }
     if (action === 'block' && req.method === 'POST' && user.owner) {
