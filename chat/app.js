@@ -5,7 +5,7 @@ const owner = page === 'owner';
 const sessionKey = 'ishtiaq-chat-session-v1';
 let session, selected, sequence = 0, pollTimer, polling = false, sending = false, generation = 0;
 let idlePolls = 0, lastInboxLoad = 0;
-let pendingMessage, registration, pushSubscription, inboxPages = 1, signedIn = false, inboxItems = [], inboxHasMore = false;
+let pendingMessage, registration, pushSubscription, inboxPages = 1, signedIn = false, inboxItems = [];
 // Keep the shell inside the visible area when a mobile keyboard pans or resizes it.
 let stickToBottom = true, viewportFrame;
 function jumpToLatest() {
@@ -40,6 +40,7 @@ const display = (id, visible) => { if ($(id)) $(id).hidden = !visible; };
 const status = (id, text) => {
   if (!$(id)) return;
   $(id).textContent = text;
+  if (id === 'connection' && $('thread-connection')) $('thread-connection').textContent = text;
   if (id === 'send-status') $(id).dataset.error = 'false';
 };
 $('messages')?.addEventListener('scroll', () => {
@@ -88,10 +89,9 @@ function fail(error, target = 'connection') {
   if (target === 'send-status') $('send-status').dataset.error = 'true';
 }
 function showEntry() {
-  lastInboxLoad = 0; display('no-conversations', false);
+  lastInboxLoad = 0; document.body.classList.remove('chat-thread-open');
   signedIn = false;
   document.body.classList.remove('chat-active');
-  display('mobile-conversations', false);
   generation++;
   clearTimeout(pollTimer);
   display('entry', true); display('workspace', false); display('owner-actions', false);
@@ -100,7 +100,6 @@ function showEntry() {
 function showWorkspace() {
   signedIn = true;
   document.body.classList.add('chat-active');
-  display('mobile-conversations', owner);
   display('entry', false); display('workspace', true); display('owner-actions', owner); display('reset', !owner);
 }
 function setThread(item) {
@@ -108,7 +107,7 @@ function setThread(item) {
   status('avatar', owner ? item.name.trim().split(/\s+/).map(part => part[0]).slice(0, 2).join('').toUpperCase() : 'IH');
   sizeComposer();
   status('thread-title', owner ? item.name : 'Chat with Ishtiaq');
-  display('thread', true); display('block', owner);
+  display('thread', !owner || document.body.classList.contains('chat-thread-open')); display('block', owner);
   status('block', item.blocked ? 'Unblock visitor' : 'Block visitor');
   if (!owner) {
     $('message').disabled = item.blocked;
@@ -143,7 +142,7 @@ function appendMessages(messages) {
   else display('latest', true);
 }
 async function loadMessages() {
-  if (owner && !selected) return;
+  if (owner && (!selected || !document.body.classList.contains('chat-thread-open'))) return;
   const current = generation;
   let result;
   do {
@@ -162,50 +161,58 @@ async function loadMessages() {
 }
 function renderInbox(items) {
   inboxItems = items;
-  const picker = $('conversation-picker');
-  picker.replaceChildren();
-  for (const item of items) {
-    const option = document.createElement('option');
-    option.value = item.id; option.textContent = item.name + (item.unread ? ' · Unread' : '') + (item.blocked ? ' · Blocked' : '');
-    picker.append(option);
-  }
-  if (inboxHasMore) {
-    const more = document.createElement('option'); more.value = '__more__'; more.textContent = 'Load more conversations…'; picker.append(more);
-  }
-  if (selected) picker.value = selected.id;
   const list = $('conversations');
-  const focused = list.contains(document.activeElement) ? document.activeElement.dataset.id : null;
+  const focused = list.contains(document.activeElement) ? document.activeElement.dataset.focus : null;
+  const openMenu = list.querySelector('details[open]')?.dataset.id;
   list.replaceChildren();
   display('inbox-empty', items.length === 0);
-  display('no-conversations', items.length === 0);
   for (const item of items) {
-    const button = document.createElement('button'); button.className = 'chat-conversation'; button.dataset.id = item.id;
+    const row = document.createElement('div'); row.className = 'chat-conversation-row';
+    const button = document.createElement('button'); button.className = 'chat-conversation'; button.dataset.id = item.id; button.dataset.focus = item.id;
     button.setAttribute('aria-current', String(selected?.id === item.id));
     const name = document.createElement('span'); name.textContent = item.name; button.append(name);
     if (item.unread) { const badge = document.createElement('strong'); badge.textContent = 'Unread'; button.append(badge); }
     const time = document.createElement('small'); time.textContent = (item.blocked ? 'Blocked · ' : '') + new Date(item.updated).toLocaleDateString(); button.append(time);
     button.addEventListener('click', () => chooseConversation(item));
-    list.append(button);
-    if (focused === item.id) button.focus();
+    const menu = document.createElement('details'); menu.className = 'chat-menu'; menu.dataset.id = item.id; menu.open = openMenu === item.id;
+    const trigger = document.createElement('summary'); trigger.textContent = '⋯'; trigger.setAttribute('aria-label', `Options for ${item.name}`); trigger.dataset.focus = `menu:${item.id}`;
+    const content = document.createElement('div'); content.className = 'chat-menu-content';
+    const remove = document.createElement('button'); remove.className = 'chat-menu-item'; remove.textContent = 'Delete conversation'; remove.dataset.focus = `delete:${item.id}`;
+    remove.addEventListener('click', () => deleteThread(item, remove));
+    content.append(remove); menu.append(trigger, content); row.append(button, menu); list.append(row);
+    row.addEventListener('contextmenu', event => { event.preventDefault(); menu.open = true; remove.focus(); });
+    for (const control of [button, trigger, remove]) if (focused === control.dataset.focus) control.focus({ preventScroll: true });
   }
 }
 async function chooseConversation(item) {
-  if (!item || selected?.id === item.id) return;
+  if (!item) return;
+  if (selected?.id === item.id) { openThread(); try { await loadMessages(); } catch (error) { fail(error); } return; }
   if ($('message').value.trim() && !confirm('Discard the draft for this conversation?')) {
-    $('conversation-picker').value = selected.id; return;
+    return;
   }
   idlePolls = 0;
   generation++; sequence = 0; pendingMessage = null; $('message').value = ''; status('send-status', '');
   $('messages').querySelectorAll('article, .chat-day').forEach(node => node.remove()); display('empty', true);
-  setThread(item); renderInbox(inboxItems);
+  setThread(item); openThread(); renderInbox(inboxItems);
   try { await loadMessages(); } catch (error) { fail(error); }
 }
-$('conversation-picker')?.addEventListener('change', async event => {
-  if (event.target.value === '__more__') {
-    inboxPages++; try { await loadInbox(); } catch (error) { fail(error); } return;
-  }
-  chooseConversation(inboxItems.find(item => item.id === event.target.value));
-});
+function openThread() {
+  document.body.classList.add('chat-thread-open');
+  display('thread', true);
+  $('back-to-inbox').focus({ preventScroll: true });
+  sizeChat();
+}
+function backToInbox() {
+  // Keep the draft and loaded messages when returning to the list.
+  generation++;
+  $('message').blur();
+  document.body.classList.remove('chat-thread-open');
+  display('thread', false);
+  document.querySelectorAll('.chat-menu[open]').forEach(menu => { menu.open = false; });
+  const row = [...$('conversations').querySelectorAll('.chat-conversation')].find(button => button.dataset.id === selected?.id);
+  row?.focus({ preventScroll: true });
+}
+$('back-to-inbox')?.addEventListener('click', backToInbox);
 async function loadInbox() {
   const current = generation;
   const items = [];
@@ -218,9 +225,7 @@ async function loadInbox() {
   if (current !== generation) return;
   lastInboxLoad = Date.now();
   showWorkspace();
-  inboxHasMore = result.more;
   display('more', result.more); renderInbox(items);
-  if (!selected && items.length) { setThread(items[0]); renderInbox(items); }
 }
 async function poll() {
   clearTimeout(pollTimer);
@@ -307,23 +312,25 @@ $('block')?.addEventListener('click', async () => {
   catch (error) { fail(error); } finally { $('block').disabled = false; }
 });
 function clearThread() {
+  document.body.classList.remove('chat-thread-open');
   generation++; selected = null; sequence = 0; pendingMessage = null;
   $('messages').querySelectorAll('article, .chat-day').forEach(node => node.remove());
   $('message').value = ''; status('send-status', '');
   display('thread', false); display('empty', true); display('latest', false);
   stickToBottom = true;
 }
-$('delete-thread')?.addEventListener('click', async () => {
-  if (!selected || sending || !confirm(`Permanently delete the conversation with ${selected.name}? All messages will be removed for both of you. This cannot be undone.`)) return;
-  const id = selected.id;
-  $('delete-thread').disabled = true;
+async function deleteThread(item, button) {
+  if (!item || sending || !confirm(`Permanently delete the conversation with ${item.name}? All messages will be removed for both of you. This cannot be undone.`)) return;
+  const id = item.id;
+  button.disabled = true;
   try {
     await api('delete', { conversation: id });
     if (selected?.id === id) clearThread();
-    lastInboxLoad = 0; await loadInbox(); await loadMessages();
+    lastInboxLoad = 0; await loadInbox();
   } catch (error) { fail(error); }
-  finally { $('delete-thread').disabled = false; }
-});
+  finally { button.disabled = false; }
+}
+$('delete-thread')?.addEventListener('click', () => deleteThread(selected, $('delete-thread')));
 $('logout')?.addEventListener('click', async () => {
   try {
     // Remove this device before dropping the credential needed to unregister it.

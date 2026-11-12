@@ -165,7 +165,11 @@ polling. Returning to the app or reconnecting refreshes immediately. Hidden
 or offline pages do not poll. Replies can take up to a minute to appear in
 an idle open chat; Web Push delivery is unchanged.
 
-The inbox conversation menu includes Delete conversation with a permanent
+The inbox opens on the conversation list. Tap a row to open a chat; Back returns
+to the list without clearing its draft. Each row has a three-dot menu (also
+available on right-click) for deleting that conversation.
+
+The conversation menus include Delete conversation with a permanent
 deletion confirmation. This removes messages, retry IDs, the inbox entry and
 pending notification jobs. The visitor must start a new chat. Older sessions
 created before this change expire normally but cannot access a deleted thread.
