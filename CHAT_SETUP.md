@@ -196,5 +196,5 @@ on their next visitor message; unknown creation times remain unavailable.
 IP and location use Vercel-managed request headers only when VERCEL=1. Local
 previews use the socket address and have no location. No external geolocation
 API or additional credentials are required. Location may reflect a VPN/proxy,
-and browser headers are self-reported. The visitor entry screen discloses this
-collection. Live Vercel geolocation still needs deployment verification.
+and browser headers are self-reported. Live Vercel geolocation still needs
+deployment verification.

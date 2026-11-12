@@ -86,6 +86,12 @@ async function api(action, data, params = {}) {
   return result;
 }
 function fail(error, target = 'connection') {
+  if (!owner && error.status === 401) {
+    session = null;
+    try { localStorage.removeItem(sessionKey); } catch {}
+    showEntry(); status('entry-status', '');
+    return;
+  }
   status(target, navigator.onLine ? error.message : 'You’re offline. Your draft is still here. Reconnect to send.');
   if (target === 'send-status') $('send-status').dataset.error = 'true';
 }
@@ -306,7 +312,7 @@ async function poll() {
     if (error.status === 401 || (!owner && error.status === 404)) {
       showEntry();
       if (!owner) { session = null; try { localStorage.removeItem(sessionKey); } catch {} }
-      fail(error, 'entry-status');
+      if (owner) fail(error, 'entry-status'); else status('entry-status', '');
     } else if (owner && error.status === 404) {
       clearThread(); lastInboxLoad = 0;
       try { await loadInbox(); } catch (refreshError) { fail(refreshError); }
