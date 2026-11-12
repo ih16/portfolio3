@@ -1,0 +1,4 @@
+tests/
+tools/
+CHAT_SETUP.md
+.env*

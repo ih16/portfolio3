@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "@upstash/redis": "^1.41.0"
+  },
+  "private": true
+}
