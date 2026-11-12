@@ -65,7 +65,7 @@ document.addEventListener('click', event => {
 });
 document.addEventListener('keydown', event => {
   if (event.key !== 'Escape') return;
-  document.querySelectorAll('.chat-menu[open]').forEach(menu => { menu.open = false; menu.querySelector('summary').focus(); });
+  document.querySelectorAll('.chat-menu[open]').forEach(menu => { menu.open = false; (menu.closest('.chat-conversation-row')?.querySelector('.chat-conversation') || menu.querySelector('summary')).focus(); });
 });
 sizeChat();
 
@@ -95,7 +95,21 @@ function fail(error, target = 'connection') {
   status(target, navigator.onLine ? error.message : 'You’re offline. Your draft is still here. Reconnect to send.');
   if (target === 'send-status') $('send-status').dataset.error = 'true';
 }
+let toastTimer;
+function dismissToast() {
+  clearTimeout(toastTimer);
+  display('inbox-toast', false);
+  status('toast-message', '');
+}
+function showToast(message) {
+  clearTimeout(toastTimer);
+  display('inbox-toast', true);
+  status('toast-message', message);
+  toastTimer = setTimeout(dismissToast, 3500);
+}
+$('toast-dismiss')?.addEventListener('click', dismissToast);
 function showEntry() {
+  dismissToast();
   $('visitor-dialog')?.close();
   clearTimeout(presenceTimer);
   lastInboxLoad = 0; document.body.classList.remove('chat-thread-open');
@@ -221,7 +235,33 @@ function renderInbox(items) {
     const remove = document.createElement('button'); remove.className = 'chat-menu-item'; remove.textContent = 'Delete conversation'; remove.dataset.focus = `delete:${item.id}`;
     remove.addEventListener('click', () => deleteThread(item, remove));
     content.append(remove); menu.append(trigger, content); row.append(avatar, button, menu); list.append(row);
-    row.addEventListener('contextmenu', event => { event.preventDefault(); menu.open = true; remove.focus(); });
+    let pressTimer, pressX, pressY, suppressClick = false;
+    const cancelPress = () => clearTimeout(pressTimer);
+    const openContext = () => {
+      document.querySelectorAll('.chat-menu[open]').forEach(other => { if (other !== menu) other.open = false; });
+      menu.open = true; remove.focus({ preventScroll: true });
+    };
+    row.addEventListener('contextmenu', event => { event.preventDefault(); cancelPress(); openContext(); });
+    row.addEventListener('keydown', event => {
+      if (event.key === 'ContextMenu' || (event.shiftKey && event.key === 'F10')) { event.preventDefault(); openContext(); }
+    });
+    row.addEventListener('pointerdown', event => {
+      cancelPress(); suppressClick = false;
+      if (event.pointerType === 'mouse' || !event.isPrimary || menu.contains(event.target)) return;
+      pressX = event.clientX; pressY = event.clientY;
+      pressTimer = setTimeout(() => {
+        if (!row.isConnected) return;
+        suppressClick = true; openContext();
+      }, 550);
+    });
+    row.addEventListener('pointermove', event => {
+      if (Math.hypot(event.clientX - pressX, event.clientY - pressY) > 10) cancelPress();
+    });
+    for (const type of ['pointerup', 'pointercancel', 'pointerleave']) row.addEventListener(type, cancelPress);
+    // A completed long press must not also navigate into the conversation.
+    row.addEventListener('click', event => {
+      if (suppressClick && !menu.contains(event.target)) { event.preventDefault(); event.stopImmediatePropagation(); suppressClick = false; }
+    }, true);
     for (const control of [avatar, button, trigger, remove]) if (focused === control.dataset.focus) control.focus({ preventScroll: true });
   }
 }
@@ -298,16 +338,24 @@ async function loadInbox() {
   showWorkspace();
   display('more', result.more); renderInbox(items);
 }
-async function poll() {
+async function poll(force = false) {
   clearTimeout(pollTimer);
   if (polling || document.visibilityState === 'hidden' || !navigator.onLine || !signedIn) return;
   polling = true;
+  if ($('refresh-inbox')) {
+    $('refresh-inbox').disabled = true;
+    $('refresh-inbox').setAttribute('aria-busy', 'true');
+  }
+  if (force) { lastInboxLoad = 0; idlePolls = 0; status('connection', 'Refreshing…'); }
   try {
     const before = sequence;
     if (owner && Date.now() - lastInboxLoad >= 60000) await loadInbox();
     await loadMessages();
     idlePolls = sequence === before ? idlePolls + 1 : 0;
-    if (owner) status('connection', '');
+    if (owner) {
+      status('connection', '');
+      if (force) showToast('Inbox refreshed');
+    }
   } catch (error) {
     if (error.status === 401 || (!owner && error.status === 404)) {
       showEntry();
@@ -319,9 +367,18 @@ async function poll() {
     } else { idlePolls++; fail(error); }
   } finally {
     polling = false;
+    if ($('refresh-inbox')) {
+      $('refresh-inbox').disabled = false;
+      $('refresh-inbox').setAttribute('aria-busy', 'false');
+    }
     if (signedIn && document.visibilityState !== 'hidden') pollTimer = setTimeout(poll, Math.min(60000, 10000 * (idlePolls + 1)));
   }
 }
+
+$('refresh-inbox')?.addEventListener('click', () => {
+  if (!navigator.onLine) { status('connection', 'You’re offline. Reconnect to refresh.'); return; }
+  poll(true);
+});
 
 $('join')?.addEventListener('submit', async event => {
   event.preventDefault();

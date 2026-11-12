@@ -166,8 +166,8 @@ or offline pages do not poll. Replies can take up to a minute to appear in
 an idle open chat; Web Push delivery is unchanged.
 
 The inbox opens on the conversation list. Tap a row to open a chat; Back returns
-to the list without clearing its draft. Each row has a three-dot menu (also
-available on right-click) for deleting that conversation.
+to the list without clearing its draft. Right-click or long-press a row to open its deletion menu. Keyboard users can
+press Shift+F10 or the context-menu key on a focused row.
 
 The conversation menus include Delete conversation with a permanent
 deletion confirmation. This removes messages, retry IDs, the inbox entry and
