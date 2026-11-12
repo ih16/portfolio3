@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content">
+<meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content, viewport-fit=cover">
 <meta name="theme-color" content="#0d0f12">
 <meta name="robots" content="noindex">
 <title>Chat — Ishtiaq Hossain</title>
@@ -18,19 +18,22 @@
 
 <main class="chat-main" id="main">
 
-<section id="entry" class="chat-panel chat-entry" hidden><h2>What should I call you?</h2><p class="chat-note">Just a name. No account needed.</p>
+<section id="entry" class="chat-panel chat-entry" hidden><span class="chat-entry-mark" aria-hidden="true">↗</span><h1>What should I call you?</h1><p class="chat-note">Just a name. No account needed.</p>
 <form id="join"><label for="name">Your name</label><input id="name" name="name" autocomplete="given-name" maxlength="60" required><button class="chat-button chat-button--primary">Start a conversation</button></form>
 <p class="chat-note">This browser remembers your chat for up to 90 days. Clearing browser storage loses access. Messages are stored on the server and are not end-to-end encrypted.</p>
 <p id="entry-status" class="chat-status" role="status"></p></section>
 <div id="workspace" class="chat-workspace" hidden><section id="thread" class="chat-panel chat-thread" aria-label="Conversation" hidden>
-<div class="chat-thread-head"><h2 id="thread-title">Chat with Ishtiaq</h2><button id="block" class="chat-button" hidden>Block visitor</button></div>
+<div class="chat-thread-head"><div class="chat-identity"><span id="avatar" class="chat-avatar" aria-hidden="true">IH</span><div><h2 id="thread-title">Chat with Ishtiaq</h2><p id="connection" class="chat-connection" role="status">Connecting…</p></div></div>
+<details class="chat-menu"><summary aria-label="Conversation options"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg></summary><div class="chat-menu-content"><button id="reset" class="chat-menu-item" hidden>Start a new chat</button><a class="chat-menu-item" href="mailto:ih.tonmoy@gmail.com">Email Ishtiaq</a></div></details></div>
+<div class="chat-history">
 <div id="messages" class="chat-messages" role="log" aria-label="Messages" aria-live="polite" aria-relevant="additions"><p id="empty" class="chat-empty">Say hello. I’ll reply here when I’m back.</p></div>
+<button id="latest" class="chat-latest" type="button" hidden>↓ Latest messages</button></div>
 <form id="compose" class="chat-compose">
-<label for="message">Your message</label><textarea id="message" name="message" maxlength="2000" required placeholder="What’s on your mind?"></textarea>
-<div class="chat-actions"><span class="chat-note">Ctrl / ⌘ + Enter to send</span><button id="send" class="chat-button chat-button--primary" type="submit">Send message</button></div>
-<p id="send-status" class="chat-status" role="status"></p>
+<label class="chat-sr-only" for="message">Your message</label>
+<div class="chat-compose-row"><textarea id="message" name="message" rows="1" maxlength="2000" required placeholder="Message…" enterkeyhint="enter" aria-describedby="send-status"></textarea><button id="send" class="chat-send" type="submit" aria-label="Send message" title="Send message" disabled><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5m-6 6 6-6 6 6"/></svg></button></div>
+<p id="send-status" class="chat-send-status" role="status"></p>
 </form></section></div>
-<p id="connection" class="chat-status" role="status">Connecting…</p>
-<div class="chat-actions"><button id="reset" class="chat-button" hidden>Start a new chat</button><a class="chat-note" href="mailto:ih.tonmoy@gmail.com">Prefer email?</a></div>
+
+
 <noscript><p>Chat needs JavaScript. You can <a href="mailto:ih.tonmoy@gmail.com">email me instead</a>.</p></noscript>
 </main></body></html>

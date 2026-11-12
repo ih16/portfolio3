@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content">
+<meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content, viewport-fit=cover">
 <meta name="theme-color" content="#0d0f12">
 <meta name="robots" content="noindex">
 <title>Inbox — Ishtiaq Hossain</title>
@@ -15,26 +15,25 @@
 </head>
 <body class="chat-page" data-page="owner">
 <a class="skip" href="#main">Skip to content</a>
-<header class="chat-header"><div>
-<a class="chat-brand" href="/"><span class="chat-mark" aria-hidden="true"></span>Ishtiaq Hossain</a>
-<nav aria-label="Chat navigation"><a href="/chat/install">Install app</a><a href="/chat">Visitor chat</a></nav>
-</div></header>
+
 <main class="chat-main" id="main">
 
 <div class="chat-intro"><p class="chat-label">Your conversations</p><h1>Inbox.</h1><p>A place to pick up where you left off.</p></div>
 <section id="entry" class="chat-panel chat-entry" hidden><h2>Owner sign-in</h2><p class="chat-note">Sign in to read and reply to your visitors.</p><form id="login"><label for="password">Inbox password</label><input id="password" name="password" type="password" autocomplete="current-password" required><button class="chat-button chat-button--primary">Sign in</button></form><p id="entry-status" class="chat-status" role="status"></p></section>
-<div id="owner-actions" class="chat-actions" hidden><button id="notifications" class="chat-button">Enable notifications</button><button id="logout" class="chat-button">Sign out</button></div>
-<p id="notification-status" class="chat-status" role="status"></p>
+<div id="owner-actions" class="chat-inbox-head" hidden><div><h1>Inbox</h1><p id="connection" class="chat-connection" role="status">Connecting…</p></div><details class="chat-menu"><summary aria-label="Inbox options"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg></summary><div class="chat-menu-content"><button id="notifications" class="chat-menu-item">Enable notifications</button><a class="chat-menu-item" href="/chat/install">Install app</a><button id="logout" class="chat-menu-item">Sign out</button><p id="notification-status" class="chat-note" role="status"></p></div></details></div>
 <div id="mobile-conversations" hidden><label for="conversation-picker" class="chat-note">Conversation</label><select id="conversation-picker" aria-label="Choose a conversation"></select></div>
 <div id="workspace" class="chat-workspace chat-workspace--owner" hidden>
 <aside class="chat-panel chat-sidebar"><h2>Conversations</h2><div id="conversations" class="chat-conversations"></div><p id="inbox-empty" class="chat-note">No messages yet. Visitors can reach you at /chat.</p><button id="more" class="chat-button" hidden>Load more</button></aside>
 <section id="thread" class="chat-panel chat-thread" aria-label="Conversation" hidden>
-<div class="chat-thread-head"><h2 id="thread-title">Chat with Ishtiaq</h2><button id="block" class="chat-button" hidden>Block visitor</button></div>
-<div id="messages" class="chat-messages" role="log" aria-label="Messages" aria-live="polite" aria-relevant="additions"><p id="empty" class="chat-empty">Say hello. I’ll reply here when I’m back.</p></div>
+<div class="chat-thread-head"><div class="chat-identity"><span id="avatar" class="chat-avatar" aria-hidden="true">IH</span><div><h2 id="thread-title">Chat with Ishtiaq</h2></div></div>
+<details class="chat-menu"><summary aria-label="Conversation options"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg></summary><div class="chat-menu-content"><button id="block" class="chat-menu-item" hidden>Block visitor</button></div></details></div>
+<div class="chat-history">
+<div id="messages" class="chat-messages" role="log" aria-label="Messages" aria-live="polite" aria-relevant="additions"><p id="empty" class="chat-empty">This is the beginning of your conversation.</p></div>
+<button id="latest" class="chat-latest" type="button" hidden>↓ Latest messages</button></div>
 <form id="compose" class="chat-compose">
-<label for="message">Your message</label><textarea id="message" name="message" maxlength="2000" required placeholder="What’s on your mind?"></textarea>
-<div class="chat-actions"><span class="chat-note">Ctrl / ⌘ + Enter to send</span><button id="send" class="chat-button chat-button--primary" type="submit">Send message</button></div>
-<p id="send-status" class="chat-status" role="status"></p>
-</form></section></div><p id="connection" class="chat-status" role="status">Connecting…</p>
+<label class="chat-sr-only" for="message">Your message</label>
+<div class="chat-compose-row"><textarea id="message" name="message" rows="1" maxlength="2000" required placeholder="Message…" enterkeyhint="enter" aria-describedby="send-status"></textarea><button id="send" class="chat-send" type="submit" aria-label="Send message" title="Send message" disabled><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5m-6 6 6-6 6 6"/></svg></button></div>
+<p id="send-status" class="chat-send-status" role="status"></p>
+</form></section></div>
 <noscript><p>Enable JavaScript to open your inbox.</p></noscript>
 </main></body></html>

@@ -5,16 +5,66 @@ const owner = page === 'owner';
 const sessionKey = 'ishtiaq-chat-session-v1';
 let session, selected, sequence = 0, pollTimer, polling = false, sending = false, generation = 0;
 let pendingMessage, registration, pushSubscription, inboxPages = 1, signedIn = false, inboxItems = [], inboxHasMore = false;
-// The visual viewport follows the on-screen keyboard on iOS as well as Android.
+// Keep the shell inside the visible area when a mobile keyboard pans or resizes it.
+let stickToBottom = true, viewportFrame;
+function jumpToLatest() {
+  const box = $('messages');
+  if (!box) return;
+  box.scrollTop = box.scrollHeight; stickToBottom = true;
+  display('latest', false);
+}
+function sizeComposer() {
+  const input = $('message');
+  if (!input) return;
+  input.style.height = '44px';
+  input.style.height = `${Math.min(input.scrollHeight, 144, innerHeight * .25)}px`;
+  $('send').disabled = sending || !selected || (!owner && selected.blocked) || !input.value.trim();
+}
 function sizeChat() {
-  if (!window.visualViewport || window.visualViewport.scale !== 1) return;
-  document.documentElement.style.setProperty('--chat-height', `${window.visualViewport.height}px`);
+  cancelAnimationFrame(viewportFrame);
+  viewportFrame = requestAnimationFrame(() => {
+    const view = window.visualViewport;
+    if (view && view.scale !== 1) return;
+    document.documentElement.style.setProperty('--chat-height', `${view?.height ?? innerHeight}px`);
+    document.documentElement.style.setProperty('--chat-top', `${view?.offsetTop ?? 0}px`);
+    document.body.classList.toggle('chat-keyboard', !!view && innerHeight - view.height > 120);
+    sizeComposer();
+    if (stickToBottom) jumpToLatest();
+  });
 }
 window.visualViewport?.addEventListener('resize', sizeChat);
+window.visualViewport?.addEventListener('scroll', sizeChat);
 window.addEventListener('resize', sizeChat);
-sizeChat();
 const display = (id, visible) => { if ($(id)) $(id).hidden = !visible; };
-const status = (id, text) => { if ($(id)) $(id).textContent = text; };
+const status = (id, text) => {
+  if (!$(id)) return;
+  $(id).textContent = text;
+  if (id === 'send-status') $(id).dataset.error = 'false';
+};
+$('messages')?.addEventListener('scroll', () => {
+  const box = $('messages');
+  stickToBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 60;
+  display('latest', !stickToBottom);
+}, { passive: true });
+$('latest')?.addEventListener('click', jumpToLatest);
+if ($('messages')) new ResizeObserver(() => {
+  if (stickToBottom) jumpToLatest();
+}).observe($('messages'));
+$('message')?.addEventListener('input', sizeComposer);
+// Sending with a touch must not dismiss an already-open keyboard.
+$('send')?.addEventListener('pointerdown', event => {
+  if (document.activeElement === $('message')) event.preventDefault();
+});
+document.addEventListener('click', event => {
+  document.querySelectorAll('.chat-menu[open]').forEach(menu => {
+    if (!menu.contains(event.target) || event.target.closest('button, a')) menu.open = false;
+  });
+});
+document.addEventListener('keydown', event => {
+  if (event.key !== 'Escape') return;
+  document.querySelectorAll('.chat-menu[open]').forEach(menu => { menu.open = false; menu.querySelector('summary').focus(); });
+});
+sizeChat();
 
 async function api(action, data, params = {}) {
   const query = new URLSearchParams({ action, ...params });
@@ -34,6 +84,7 @@ async function api(action, data, params = {}) {
 }
 function fail(error, target = 'connection') {
   status(target, navigator.onLine ? error.message : 'You’re offline. Your draft is still here. Reconnect to send.');
+  if (target === 'send-status') $('send-status').dataset.error = 'true';
 }
 function showEntry() {
   signedIn = false;
@@ -52,32 +103,42 @@ function showWorkspace() {
 }
 function setThread(item) {
   selected = item;
+  status('avatar', owner ? item.name.trim().split(/\s+/).map(part => part[0]).slice(0, 2).join('').toUpperCase() : 'IH');
+  sizeComposer();
   status('thread-title', owner ? item.name : 'Chat with Ishtiaq');
   display('thread', true); display('block', owner);
   status('block', item.blocked ? 'Unblock visitor' : 'Block visitor');
   if (!owner) {
     $('message').disabled = item.blocked;
-    $('send').disabled = item.blocked;
-    if (item.blocked) status('send-status', 'This conversation is closed.');
+    sizeComposer();
+    if (item.blocked) { status('send-status', 'This conversation is closed.'); $('send-status').dataset.error = 'true'; }
   }
 }
 function appendMessages(messages) {
   const box = $('messages');
-  const atBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 80;
+  const atBottom = stickToBottom;
   const first = sequence === 0;
   for (const message of messages) {
     if (message.sequence <= sequence) continue;
     display('empty', false);
+    const date = new Date(message.at);
+    const day = date.toLocaleDateString([], { year: 'numeric', month: 'short', day: 'numeric' });
+    if (box.lastElementChild?.dataset.day !== day) {
+      const divider = document.createElement('div'); divider.className = 'chat-day'; divider.textContent = day; divider.dataset.day = day; box.append(divider);
+    }
     const article = document.createElement('article');
+    article.dataset.day = day;
     article.className = 'chat-message' + ((owner ? message.sender === 'owner' : message.sender === 'visitor') ? ' chat-message--mine' : '');
     article.setAttribute('aria-label', message.sender === 'owner' ? 'Ishtiaq' : selected.name);
     const text = document.createElement('p'); text.textContent = message.text;
     const time = document.createElement('time'); time.dateTime = new Date(message.at).toISOString();
-    time.textContent = new Date(message.at).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+    time.textContent = date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    time.title = date.toLocaleString();
     article.append(text, time); box.append(article);
     sequence = message.sequence;
   }
-  if (atBottom || first) box.scrollTop = box.scrollHeight;
+  if (atBottom || first) jumpToLatest();
+  else display('latest', true);
 }
 async function loadMessages() {
   if (owner && !selected) return;
@@ -127,7 +188,7 @@ async function chooseConversation(item) {
     $('conversation-picker').value = selected.id; return;
   }
   generation++; sequence = 0; pendingMessage = null; $('message').value = ''; status('send-status', '');
-  $('messages').querySelectorAll('article').forEach(node => node.remove()); display('empty', true);
+  $('messages').querySelectorAll('article, .chat-day').forEach(node => node.remove()); display('empty', true);
   setThread(item); renderInbox(inboxItems);
   try { await loadMessages(); } catch (error) { fail(error); }
 }
@@ -159,7 +220,7 @@ async function poll() {
   try {
     if (owner) await loadInbox();
     await loadMessages();
-    status('connection', 'Connected');
+    status('connection', 'Messages up to date');
   } catch (error) {
     if (error.status === 401 || (!owner && error.status === 404)) {
       showEntry();
@@ -181,7 +242,7 @@ $('join')?.addEventListener('submit', async event => {
     session = await api('session', { name: $('name').value.trim() });
     localStorage.setItem(sessionKey, JSON.stringify(session));
     selected = null; sequence = 0; generation++;
-    $('messages').querySelectorAll('article').forEach(node => node.remove()); display('empty', true);
+    $('messages').querySelectorAll('article, .chat-day').forEach(node => node.remove()); display('empty', true);
     pendingMessage = null; $('message').value = ''; status('send-status', '');
     showWorkspace(); await poll();
   } catch (error) { fail(error.name === 'SecurityError' || error.name === 'QuotaExceededError' ? new Error('Allow browser storage to remember your chat, or contact me by email.') : error, 'entry-status'); }
@@ -200,7 +261,7 @@ $('compose')?.addEventListener('submit', async event => {
   if (sending || !selected) return;
   const text = $('message').value.trim();
   if (!text) return;
-  sending = true; $('send').disabled = true; status('send-status', 'Sending…');
+  sending = true; $('send').disabled = true; $('compose').setAttribute('aria-busy', 'true'); status('send-status', 'Sending…');
   // Keep the ID after a timeout so an acknowledged-but-lost response cannot
   // create a duplicate when the visitor presses Send again.
   if (!pendingMessage || pendingMessage.text !== text || pendingMessage.conversation !== selected.id)
@@ -210,13 +271,13 @@ $('compose')?.addEventListener('submit', async event => {
     await api('send', pendingMessage);
     if (current !== generation) return;
     if ($('message').value.trim() === text) $('message').value = '';
-    pendingMessage = null; status('send-status', 'Sent.');
+    pendingMessage = null; sizeComposer(); stickToBottom = true; status('send-status', 'Sent.');
     await loadMessages();
-  } catch (error) { fail(error, 'send-status'); }
-  finally { sending = false; $('send').disabled = !owner && selected?.blocked; }
+  } catch (error) { if (current === generation) fail(error, 'send-status'); }
+  finally { sending = false; $('compose').setAttribute('aria-busy', 'false'); sizeComposer(); }
 });
 $('message')?.addEventListener('keydown', event => {
-  if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) { event.preventDefault(); $('compose').requestSubmit(); }
+  if (!event.isComposing && event.key === 'Enter' && (event.ctrlKey || event.metaKey)) { event.preventDefault(); $('compose').requestSubmit(); }
 });
 $('reset')?.addEventListener('click', () => {
   if (!confirm('Start a new chat? You will lose access to this conversation in this browser.')) return;
@@ -237,7 +298,7 @@ $('logout')?.addEventListener('click', async () => {
       await pushSubscription.unsubscribe(); pushSubscription = null;
     }
     await api('logout', {}); selected = null; sequence = 0;
-    $('messages').querySelectorAll('article').forEach(node => node.remove()); $('message').value = ''; showEntry();
+    $('messages').querySelectorAll('article, .chat-day').forEach(node => node.remove()); $('message').value = ''; showEntry();
   } catch (error) { fail(error); }
 });
 
