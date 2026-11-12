@@ -90,6 +90,20 @@ test('owner login, replies, unread acknowledgement and block enforcement', async
   assert.equal((await request('send', { id: randomUUID(), text: 'Blocked' }, alice)).status, 403);
   await request('block', { conversation, blocked: false }, { owner: true });
 });
+test('owner presence lasts fifteen minutes and visitor reads cannot extend it', async () => {
+  await redis('DEL', key('owner-online'));
+  assert.equal((await request('messages', undefined, alice)).body.onlineUntil, 0);
+  assert.equal((await request('inbox', undefined, { owner: true, headers: { Cookie: '' } })).status, 401);
+  assert.equal(await redis('GET', key('owner-online')), null);
+  await request('inbox', undefined, { owner: true });
+  const until = Number(await redis('GET', key('owner-online')));
+  assert.ok(until > Date.now() + 899000 && until <= Date.now() + 900000);
+  assert.ok(await redis('TTL', key('owner-online')) <= 900);
+  assert.equal((await request('messages', undefined, alice)).body.onlineUntil, until);
+  assert.equal(Number(await redis('GET', key('owner-online'))), until);
+  await redis('SET', key('owner-online'), Date.now() - 1, 'EX', 900);
+  assert.equal((await request('messages', undefined, alice)).body.onlineUntil, 0);
+});
 test('VAPID uses a verifiable ES256 signature bound to the push origin', () => {
   const auth = vapidAuthorization('https://web.push.apple.com/test', JSON.parse(process.env.VAPID_PRIVATE_JWK), process.env.VAPID_PUBLIC_KEY, process.env.VAPID_SUBJECT);
   const token = auth.match(/t=([^,]+)/)[1]; const [header, claims, signature] = token.split('.');
@@ -120,7 +134,7 @@ test('unchanged polling skips message reads and inbox cleanup', async () => {
   const result = await request('messages', undefined, alice, { after: '3' });
   assert.equal(result.status, 200);
   assert.deepEqual(result.body.messages, []);
-  assert.deepEqual(storageCommands.map(cmd => cmd[0]), ['GET', 'HGETALL']);
+  assert.deepEqual(storageCommands.map(cmd => cmd[0]), ['MGET', 'HGETALL']);
   storageCommands.length = 0;
   await request('inbox', undefined, { owner: true });
   assert.ok(!storageCommands.some(cmd => cmd[0] === 'ZREMRANGEBYSCORE'));
@@ -156,6 +170,43 @@ test('thread summaries count unread visitor messages and survive partial reads a
   assert.equal(summary.unreadCount, 0);
   assert.equal(summary.latestSender, 'owner');
   assert.equal(summary.latestText, 'Latest reply');
+});
+test('visitor details are owner-only, captured from requests and excluded from messages', async () => {
+  const visitor = (await request('session', { name: 'Details test' }, { headers: { 'User-Agent': 'Preview browser', 'X-Vercel-Ip-City': 'Spoofed' } })).body;
+  const params = { conversation: visitor.conversation.id };
+  assert.equal((await request('visitor', undefined, visitor, params)).status, 403);
+  assert.equal((await request('visitor', undefined, {}, params)).status, 401);
+  const details = (await request('visitor', undefined, { owner: true }, params));
+  assert.equal(details.status, 200);
+  assert.equal(details.body.info.userAgent, 'Preview browser');
+  assert.equal(details.body.info.ip, '127.0.0.1');
+  assert.equal(details.body.info.city, '');
+  assert.ok(details.body.created > 0);
+  const result = await request('messages', undefined, visitor);
+  assert.equal(JSON.stringify(result.body).includes('127.0.0.1'), false);
+  assert.equal(JSON.stringify(result.body).includes('Preview browser'), false);
+  await request('send', { id: randomUUID(), text: 'New connection' }, { ...visitor, headers: { 'User-Agent': 'Updated browser' } });
+  await request('send', { id: randomUUID(), text: 'Reply', conversation: visitor.conversation.id }, { owner: true });
+  assert.equal((await request('visitor', undefined, { owner: true }, params)).body.info.userAgent, 'Updated browser');
+  await redis('HDEL', key(`conversation:${visitor.conversation.id}`), 'visitorInfo', 'created');
+  const legacy = (await request('visitor', undefined, { owner: true }, params)).body;
+  assert.equal(legacy.info, null);
+  assert.equal(legacy.created, null);
+});
+test('Vercel visitor metadata decodes city names and validates addresses', () => {
+  const { visitorInfo } = require('../server/visitor');
+  const previous = process.env.VERCEL;
+  try {
+    process.env.VERCEL = '1';
+    const headers = { 'x-vercel-forwarded-for': '203.0.113.10', 'x-vercel-ip-city': 'New%20York', 'x-vercel-ip-country-region': 'NY', 'x-vercel-ip-country': 'US' };
+    const info = visitorInfo({ headers }, 123);
+    assert.equal(info.city, 'New York');
+    assert.equal(info.ip, '203.0.113.10');
+    assert.equal(info.country, 'US');
+    assert.equal(info.at, 123);
+    assert.equal(visitorInfo({ headers: { ...headers, 'x-vercel-forwarded-for': 'not-an-ip', 'x-vercel-ip-city': '%broken' } }).ip, '');
+    assert.equal(visitorInfo({ headers: { ...headers, 'x-vercel-ip-city': '%broken' } }).city, '');
+  } finally { if (previous === undefined) delete process.env.VERCEL; else process.env.VERCEL = previous; }
 });
 test('only the owner can delete a thread; deletion removes messages, session and pending pushes', async () => {
   const conversation = alice.conversation.id;

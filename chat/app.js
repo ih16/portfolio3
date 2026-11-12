@@ -4,7 +4,7 @@ const page = document.body.dataset.page;
 const owner = page === 'owner';
 const sessionKey = 'ishtiaq-chat-session-v1';
 let session, selected, sequence = 0, pollTimer, polling = false, sending = false, generation = 0;
-let idlePolls = 0, lastInboxLoad = 0;
+let idlePolls = 0, lastInboxLoad = 0, presenceTimer;
 let pendingMessage, registration, pushSubscription, inboxPages = 1, signedIn = false, inboxItems = [];
 // Keep the shell inside the visible area when a mobile keyboard pans or resizes it.
 let stickToBottom = true, viewportFrame;
@@ -40,6 +40,7 @@ const display = (id, visible) => { if ($(id)) $(id).hidden = !visible; };
 const status = (id, text) => {
   if (!$(id)) return;
   $(id).textContent = text;
+  if (id === 'connection') $(id).classList.toggle('chat-online', text === 'Online');
   if (id === 'connection' && $('thread-connection')) $('thread-connection').textContent = text;
   if (id === 'send-status') $(id).dataset.error = 'false';
 };
@@ -89,6 +90,8 @@ function fail(error, target = 'connection') {
   if (target === 'send-status') $('send-status').dataset.error = 'true';
 }
 function showEntry() {
+  $('visitor-dialog')?.close();
+  clearTimeout(presenceTimer);
   lastInboxLoad = 0; document.body.classList.remove('chat-thread-open');
   signedIn = false;
   document.body.classList.remove('chat-active');
@@ -141,6 +144,14 @@ function appendMessages(messages) {
   if (atBottom || first) jumpToLatest();
   else display('latest', true);
 }
+function showPresence(until) {
+  clearTimeout(presenceTimer);
+  const remaining = until - Date.now();
+  status('connection', remaining > 0 ? 'Online' : '');
+  if (remaining > 0) presenceTimer = setTimeout(() => {
+    if ($('connection').textContent === 'Online') status('connection', '');
+  }, remaining);
+}
 async function loadMessages() {
   if (owner && (!selected || !document.body.classList.contains('chat-thread-open'))) return;
   const current = generation;
@@ -148,6 +159,7 @@ async function loadMessages() {
   do {
     result = await api('messages', undefined, { after: String(sequence), ...(owner ? { conversation: selected.id } : {}) });
     if (current !== generation) return;
+    if (!owner) showPresence(result.onlineUntil);
     setThread(result.conversation);
     appendMessages(result.messages);
   } while (result.more);
@@ -191,21 +203,52 @@ function renderInbox(items) {
       const badge = document.createElement('strong'); badge.className = 'chat-unread-count'; badge.textContent = String(item.unreadCount);
       badge.setAttribute('aria-label', `${item.unreadCount} unread ${item.unreadCount === 1 ? 'message' : 'messages'}`); detail.append(badge);
     }
-    const avatar = document.createElement('span'); avatar.className = 'chat-avatar'; avatar.setAttribute('aria-hidden', 'true');
+    const avatar = document.createElement('button'); avatar.type = 'button'; avatar.className = 'chat-avatar chat-avatar-button'; avatar.dataset.focus = `visitor:${item.id}`; avatar.setAttribute('aria-label', `View details for ${item.name}`);
+    avatar.addEventListener('click', () => showVisitor(item));
     avatar.textContent = item.name.trim().split(/\s+/).map(part => part[0]).slice(0, 2).join('').toUpperCase();
     const copy = document.createElement('span'); copy.className = 'chat-conversation-copy'; copy.append(heading, detail);
-    button.append(avatar, copy);
+    button.append(copy);
     button.addEventListener('click', () => chooseConversation(item));
     const menu = document.createElement('details'); menu.className = 'chat-menu'; menu.dataset.id = item.id; menu.open = openMenu === item.id;
     const trigger = document.createElement('summary'); trigger.textContent = '⋯'; trigger.setAttribute('aria-label', `Options for ${item.name}`); trigger.dataset.focus = `menu:${item.id}`;
     const content = document.createElement('div'); content.className = 'chat-menu-content';
     const remove = document.createElement('button'); remove.className = 'chat-menu-item'; remove.textContent = 'Delete conversation'; remove.dataset.focus = `delete:${item.id}`;
     remove.addEventListener('click', () => deleteThread(item, remove));
-    content.append(remove); menu.append(trigger, content); row.append(button, menu); list.append(row);
+    content.append(remove); menu.append(trigger, content); row.append(avatar, button, menu); list.append(row);
     row.addEventListener('contextmenu', event => { event.preventDefault(); menu.open = true; remove.focus(); });
-    for (const control of [button, trigger, remove]) if (focused === control.dataset.focus) control.focus({ preventScroll: true });
+    for (const control of [avatar, button, trigger, remove]) if (focused === control.dataset.focus) control.focus({ preventScroll: true });
   }
 }
+let visitorRequest = 0;
+async function showVisitor(item) {
+  const current = ++visitorRequest;
+  const dialog = $('visitor-dialog');
+  status('visitor-title', item.name);
+  status('visitor-status', 'Loading visitor details…');
+  $('visitor-details').replaceChildren();
+  dialog.showModal();
+  try {
+    const result = await api('visitor', undefined, { conversation: item.id });
+    if (current !== visitorRequest || !dialog.open) return;
+    status('visitor-status', result.info ? 'Latest recorded connection' : 'No connection details recorded yet. They will be available after the visitor sends another message.');
+    const info = result.info || {};
+    const fields = [
+      ['IP address', info.ip],
+      ['Approximate location', [info.city, info.region, info.country].filter(Boolean).join(', ')],
+      ['Browser information', info.userAgent],
+      ['Chat started', result.created ? new Date(result.created).toLocaleString() : ''],
+      ['Connection recorded', info.at ? new Date(info.at).toLocaleString() : '']
+    ];
+    for (const [label, value] of fields) {
+      const term = document.createElement('dt'); term.textContent = label;
+      const detail = document.createElement('dd'); detail.textContent = value || 'Not available';
+      $('visitor-details').append(term, detail);
+    }
+  } catch (error) { if (current === visitorRequest && dialog.open) fail(error, 'visitor-status'); }
+}
+$('visitor-close')?.addEventListener('click', () => $('visitor-dialog').close());
+$('visitor-dialog')?.addEventListener('close', () => { visitorRequest++; $('visitor-details').replaceChildren(); });
+if (owner) $('avatar')?.addEventListener('click', () => { if (selected) showVisitor(selected); });
 async function chooseConversation(item) {
   if (!item) return;
   if (selected?.id === item.id) { openThread(); try { await loadMessages(); } catch (error) { fail(error); } return; }
@@ -258,7 +301,7 @@ async function poll() {
     if (owner && Date.now() - lastInboxLoad >= 60000) await loadInbox();
     await loadMessages();
     idlePolls = sequence === before ? idlePolls + 1 : 0;
-    status('connection', 'Messages up to date');
+    if (owner) status('connection', '');
   } catch (error) {
     if (error.status === 401 || (!owner && error.status === 404)) {
       showEntry();

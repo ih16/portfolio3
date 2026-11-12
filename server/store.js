@@ -52,7 +52,9 @@ redis.call('RPUSH', KEYS[2], message)
 redis.call('HSET', KEYS[3], ARGV[1], message)
 redis.call('HSET', KEYS[1], 'updated', ARGV[4], 'latestText', ARGV[3], 'latestSender', ARGV[2])
 if ARGV[2] == 'visitor' then
-  redis.call('HSET', KEYS[1], 'lastVisitor', seq)
+  if ARGV[8] ~= '' then
+    redis.call('HSET', KEYS[1], 'lastVisitor', seq, 'visitorInfo', ARGV[8])
+  else redis.call('HSET', KEYS[1], 'lastVisitor', seq) end
   redis.call('HINCRBY', KEYS[1], 'unreadCount', 1)
   redis.call('SET', KEYS[5], '{}', 'EX', ARGV[6])
   redis.call('ZADD', KEYS[6], ARGV[4], ARGV[7])
@@ -119,6 +121,6 @@ async function saveMessage(id, message) {
   const job = `${id}:${message.id}`;
   return redis('EVAL', messageScript, 6, key(`conversation:${id}`), key(`messages:${id}`),
     key(`ids:${id}`), key('conversations'), key(`job:${job}`), key('outbox'),
-    message.id, message.sender, message.text, message.at, id, RETENTION, job);
+    message.id, message.sender, message.text, message.at, id, RETENTION, job, message.info ? JSON.stringify(message.info) : '');
 }
 module.exports = { deleteConversation, redis, key, rate, conversation, saveMessage, readScript, RETENTION, messageScript };

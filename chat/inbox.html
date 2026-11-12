@@ -24,7 +24,7 @@
 <div id="workspace" class="chat-workspace chat-workspace--owner" hidden>
 <aside class="chat-panel chat-sidebar" aria-label="Conversations"><div id="conversations" class="chat-conversations"></div><p id="inbox-empty" class="chat-note">No messages yet. Visitors can reach you at /chat.</p><button id="more" class="chat-button" hidden>Load more</button></aside>
 <section id="thread" class="chat-panel chat-thread" aria-label="Conversation" hidden>
-<div class="chat-thread-head"><button id="back-to-inbox" class="chat-back" type="button" aria-label="Back to conversations"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m14 6-6 6 6 6"/></svg></button><div class="chat-identity"><span id="avatar" class="chat-avatar" aria-hidden="true">IH</span><div><h2 id="thread-title">Chat with Ishtiaq</h2><p id="thread-connection" class="chat-connection" role="status"></p></div></div>
+<div class="chat-thread-head"><button id="back-to-inbox" class="chat-back" type="button" aria-label="Back to conversations"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m14 6-6 6 6 6"/></svg></button><div class="chat-identity"><button id="avatar" class="chat-avatar chat-avatar-button" type="button" aria-label="View visitor details">IH</button><div><h2 id="thread-title">Chat with Ishtiaq</h2><p id="thread-connection" class="chat-connection" role="status"></p></div></div>
 <details class="chat-menu"><summary aria-label="Conversation options"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg></summary><div class="chat-menu-content"><button id="delete-thread" class="chat-menu-item">Delete conversation</button><button id="block" class="chat-menu-item" hidden>Block visitor</button></div></details></div>
 <div class="chat-history">
 <div id="messages" class="chat-messages" role="log" aria-label="Messages" aria-live="polite" aria-relevant="additions"><p id="empty" class="chat-empty">This is the beginning of your conversation.</p></div>
@@ -34,5 +34,11 @@
 <div class="chat-compose-row"><textarea id="message" name="message" rows="1" maxlength="2000" required placeholder="Message…" enterkeyhint="enter" aria-describedby="send-status"></textarea><button id="send" class="chat-send" type="submit" aria-label="Send message" title="Send message" disabled><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5m-6 6 6-6 6 6"/></svg></button></div>
 <p id="send-status" class="chat-send-status" role="status"></p>
 </form></section></div>
+<dialog id="visitor-dialog" class="chat-visitor-dialog" aria-labelledby="visitor-title">
+<div class="chat-visitor-head"><h2 id="visitor-title">Visitor details</h2><button id="visitor-close" class="chat-back" type="button" aria-label="Close visitor details">×</button></div>
+<p id="visitor-status" class="chat-note" role="status"></p>
+<dl id="visitor-details" class="chat-visitor-details"></dl>
+<p class="chat-note">Location is estimated from the IP address, not GPS. VPNs and proxies may show a different location. Browser information is reported by the visitor’s browser.</p>
+</dialog>
 <noscript><p>Enable JavaScript to open your inbox.</p></noscript>
 </main></body></html>

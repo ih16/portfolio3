@@ -220,3 +220,19 @@
 @media (hover: hover) { .chat-conversation-row:hover { background: var(--surface); } }
 
 .chat-conversation-row.has-unread { background: var(--chat-mine); box-shadow: inset 3px 0 var(--accent-text); }
+
+.chat-connection:empty { display: none; }
+.chat-connection.chat-online { color: var(--accent-text); }
+.chat-online::before { content: ''; display: inline-block; width: .4rem; height: .4rem; margin-right: .35rem; border-radius: 50%; background: currentColor; vertical-align: .1em; }
+
+.chat-avatar-button { cursor: pointer; font-family: var(--font-display); }
+.chat-conversation-row > .chat-avatar-button { margin-left: .5rem; min-width: 44px; min-height: 44px; }
+.chat-avatar-button:hover { border-color: var(--accent-text); }
+.chat-visitor-dialog { margin: auto; width: min(32rem, calc(100% - 2rem)); max-height: calc(100dvh - 2rem); overflow-y: auto; background: var(--paper-2); color: var(--text); border: 1px solid var(--line); border-radius: 1.25rem; padding: 1.25rem; box-shadow: 0 12px 40px var(--shadow); }
+.chat-visitor-dialog::backdrop { background: var(--shadow); }
+.chat-visitor-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: .5rem; }
+.chat-visitor-head h2 { font-size: 1.15rem; overflow-wrap: anywhere; }
+.chat-visitor-head .chat-back { font-size: 1.6rem; }
+.chat-visitor-details { margin: 1.25rem 0; }
+.chat-visitor-details dt { color: var(--text-muted); font-size: .75rem; margin-top: 1rem; }
+.chat-visitor-details dd { font-size: .9rem; margin-top: .25rem; overflow-wrap: anywhere; }

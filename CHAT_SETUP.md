@@ -173,3 +173,28 @@ The conversation menus include Delete conversation with a permanent
 deletion confirmation. This removes messages, retry IDs, the inbox entry and
 pending notification jobs. The visitor must start a new chat. Older sessions
 created before this change expire normally but cannot access a deleted thread.
+
+## Online indicator
+
+Visitors see Online while the owner's last authenticated inbox refresh is less
+than 15 minutes old. The existing visible-app refresh renews a 900-second Redis
+key; visitor requests read presence together with their session using MGET.
+There is no last-seen display. The indicator clears on expiry, including between
+polls. Closing the inbox deliberately leaves Online visible for the remaining
+window; this indicates recent app activity, not current device activity.
+
+## Visitor details
+
+Owner-only avatar panels show the latest recorded IP, approximate city/region/
+country, browser User-Agent, chat creation time and connection recording time.
+Metadata is captured at session creation and refreshed on visitor messages,
+inside the existing writes. Opening the panel makes an authenticated request;
+metadata is excluded from ordinary inbox/message responses and is not cached.
+It expires and is deleted with the conversation. Existing chats acquire details
+on their next visitor message; unknown creation times remain unavailable.
+
+IP and location use Vercel-managed request headers only when VERCEL=1. Local
+previews use the socket address and have no location. No external geolocation
+API or additional credentials are required. Location may reflect a VPN/proxy,
+and browser headers are self-reported. The visitor entry screen discloses this
+collection. Live Vercel geolocation still needs deployment verification.
