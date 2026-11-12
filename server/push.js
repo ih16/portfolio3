@@ -38,6 +38,7 @@ async function drainOutbox() {
   if (!await redis('SET', key('push-lock'), lock, 'NX', 'EX', 45)) return;
   try {
     const jobs = await redis('ZRANGEBYSCORE', key('outbox'), '-inf', Date.now(), 'LIMIT', 0, 3);
+    if (!jobs.length) return;
     const subscriptions = await redis('HGETALL', key('subscriptions'));
     const devices = [];
     for (let i = 0; i < subscriptions.length; i += 2) devices.push([subscriptions[i], subscriptions[i + 1]]);
@@ -56,8 +57,10 @@ async function drainOutbox() {
         } catch { failed = true; }
       }));
       if (failed) {
-        await redis('SET', key(`job:${job}`), JSON.stringify(done), 'KEEPTTL');
-        await redis('ZADD', key('outbox'), Date.now() + 60000, job);
+        // Deletion may have removed this job while the push request was in flight.
+        await redis('EVAL', `if redis.call('EXISTS', KEYS[1]) == 0 then return 0 end
+          redis.call('SET', KEYS[1], ARGV[1], 'KEEPTTL'); redis.call('ZADD', KEYS[2], ARGV[2], ARGV[3]); return 1`,
+          2, key(`job:${job}`), key('outbox'), JSON.stringify(done), Date.now() + 60000, job);
       } else {
         await redis('ZREM', key('outbox'), job);
         await redis('DEL', key(`job:${job}`));

@@ -1,6 +1,6 @@
 'use strict';
 const { randomBytes, randomUUID, createHash, timingSafeEqual } = require('node:crypto');
-const { redis, key, rate, conversation, saveMessage, readScript, RETENTION } = require('../server/store');
+const { deleteConversation, redis, key, rate, conversation, saveMessage, readScript, RETENTION } = require('../server/store');
 const { validEndpoint, subscriptionId, drainOutbox } = require('../server/push');
 const hash = text => createHash('sha256').update(text).digest('hex');
 const equal = (a, b) => timingSafeEqual(Buffer.from(hash(a)), Buffer.from(hash(b)));
@@ -53,6 +53,7 @@ async function handler(req, res) {
     if (action === 'cron' && req.method === 'GET') {
       requireValue(process.env.CRON_SECRET && equal(req.headers.authorization || '', `Bearer ${process.env.CRON_SECRET}`), 401, 'Unauthorised.');
       await drainOutbox();
+      await redis('ZREMRANGEBYSCORE', key('conversations'), '-inf', Date.now() - RETENTION * 1000);
       return respond(200, { ok: true });
     }
     const data = req.method === 'POST' ? await body(req) : {};
@@ -64,8 +65,8 @@ async function handler(req, res) {
       const token = randomBytes(32).toString('hex');
       const id = randomUUID();
       const now = Date.now();
-      await redis('EVAL', `redis.call('SET', KEYS[1], ARGV[1], 'EX', ARGV[4]); redis.call('HSET', KEYS[2], 'name', ARGV[2], 'updated', ARGV[3], 'sequence', 0); redis.call('EXPIRE', KEYS[2], ARGV[4]); return 1`,
-        2, key(`session:${hash(token)}`), key(`conversation:${id}`), id, data.name.trim(), now, RETENTION);
+      await redis('EVAL', `redis.call('SET', KEYS[1], ARGV[1], 'EX', ARGV[4]); redis.call('HSET', KEYS[2], 'name', ARGV[2], 'updated', ARGV[3], 'sequence', 0, 'session', ARGV[5]); redis.call('EXPIRE', KEYS[2], ARGV[4]); return 1`,
+        2, key(`session:${hash(token)}`), key(`conversation:${id}`), id, data.name.trim(), now, RETENTION, hash(token));
       return respond(201, { token, conversation: { id, name: data.name.trim() } });
     }
     if (action === 'login' && req.method === 'POST') {
@@ -85,8 +86,7 @@ async function handler(req, res) {
     if (action === 'inbox' && req.method === 'GET' && user.owner) {
       const offset = Number(url.searchParams.get('offset') || 0);
       requireValue(Number.isSafeInteger(offset) && offset >= 0 && offset <= 100000, 400, 'Invalid offset.');
-      await redis('ZREMRANGEBYSCORE', key('conversations'), '-inf', Date.now() - RETENTION * 1000);
-      const ids = await redis('ZREVRANGE', key('conversations'), offset, offset + 49);
+      const ids = await redis('ZREVRANGEBYSCORE', key('conversations'), '+inf', `(${Date.now() - RETENTION * 1000}`, 'LIMIT', offset, 50);
       const items = (await Promise.all(ids.map(conversation))).filter(Boolean);
       return respond(200, { conversations: items, more: ids.length === 50 });
     }
@@ -104,12 +104,17 @@ async function handler(req, res) {
     }
     const id = user.owner ? (data.conversation || url.searchParams.get('conversation')) : user.id;
     requireValue(uuid(id), 400, 'Choose a conversation.');
+    if (action === 'delete' && req.method === 'POST') {
+      requireValue(user.owner, 403, 'Only the owner can delete conversations.');
+      await deleteConversation(id);
+      return respond(200, { ok: true });
+    }
     const item = await conversation(id);
     requireValue(item, 404, 'This conversation has expired. Start a new chat.');
     if (action === 'messages' && req.method === 'GET') {
       const after = Number(url.searchParams.get('after') || 0);
       requireValue(Number.isSafeInteger(after) && after >= 0 && after <= 2000, 400, 'Invalid message cursor.');
-      const messages = await redis('LRANGE', key(`messages:${id}`), after, after + 99);
+      const messages = after < item.sequence ? await redis('LRANGE', key(`messages:${id}`), after, after + 99) : [];
       return respond(200, { conversation: item, messages: messages.map(JSON.parse), more: after + messages.length < item.sequence });
     }
     if (action === 'read' && req.method === 'POST' && user.owner) {
@@ -119,7 +124,9 @@ async function handler(req, res) {
     }
     if (action === 'block' && req.method === 'POST' && user.owner) {
       requireValue(typeof data.blocked === 'boolean', 400, 'Invalid block status.');
-      await redis('HSET', key(`conversation:${id}`), 'blocked', data.blocked ? '1' : '0');
+      const updated = await redis('EVAL', `if redis.call('EXISTS', KEYS[1]) == 0 then return 0 end
+        redis.call('HSET', KEYS[1], 'blocked', ARGV[1]); return 1`, 1, key(`conversation:${id}`), data.blocked ? '1' : '0');
+      requireValue(updated, 404, 'This conversation has expired.');
       return respond(200, { ok: true });
     }
     if (action === 'send' && req.method === 'POST') {

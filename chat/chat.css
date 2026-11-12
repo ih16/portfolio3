@@ -183,3 +183,6 @@
   .chat-active[data-page="owner"] .chat-thread-head { padding-top: .4rem; }
   .chat-entry { padding: 1.5rem; margin-top: max(1rem, env(safe-area-inset-top)); }
 }
+
+#no-conversations { display: none; }
+@media (max-width: 700px) { #no-conversations { display: block; margin: auto; } }

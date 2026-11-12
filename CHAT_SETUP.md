@@ -156,3 +156,16 @@ the preview is excluded from deployment and must not be exposed publicly.
 - **Old content after an update:** open the app online to refresh its shell.
   The service worker uses network-first fetching. Increment its cache version
   when changing the shell's file list.
+
+## Polling and thread deletion
+
+Visible chats poll every 10 seconds after activity, backing off to 60 seconds
+when unchanged. The owner inbox list refreshes at most once a minute during
+polling. Returning to the app or reconnecting refreshes immediately. Hidden
+or offline pages do not poll. Replies can take up to a minute to appear in
+an idle open chat; Web Push delivery is unchanged.
+
+The inbox conversation menu includes Delete conversation with a permanent
+deletion confirmation. This removes messages, retry IDs, the inbox entry and
+pending notification jobs. The visitor must start a new chat. Older sessions
+created before this change expire normally but cannot access a deleted thread.

@@ -10,7 +10,8 @@ const { key, redis } = require('../server/store');
 let gateway, server, origin, cookie, alice, bob, signingKey;
 const originalFetch = global.fetch;
 const pushResults = [];
-let pushStatus = 201;
+const storageCommands = [];
+let pushStatus = 201, onPush;
 before(async () => {
   gateway = await bridge();
   process.env.UPSTASH_REDIS_REST_URL = `http://127.0.0.1:${gateway.address().port}`;
@@ -27,7 +28,8 @@ before(async () => {
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   origin = `http://127.0.0.1:${server.address().port}`; process.env.CHAT_ORIGIN = origin;
   global.fetch = async (url, options) => {
-    if (String(url).startsWith('https://web.push.apple.com/')) { pushResults.push(options); return new Response(null, { status: pushStatus }); }
+    if (String(url) === process.env.UPSTASH_REDIS_REST_URL) storageCommands.push(JSON.parse(options.body));
+    if (String(url).startsWith('https://web.push.apple.com/')) { pushResults.push(options); if (onPush) await onPush(); return new Response(null, { status: pushStatus }); }
     return originalFetch(url, options);
   };
 });
@@ -112,6 +114,52 @@ test('push failures preserve messages and retry jobs; dead subscriptions are rem
   assert.equal(await redis('ZCARD', key('outbox')), 0);
   assert.equal(await redis('HLEN', key('subscriptions')), 0);
   assert.equal((await request('messages', undefined, alice)).body.messages.length, 3);
+});
+test('unchanged polling skips message reads and inbox cleanup', async () => {
+  storageCommands.length = 0;
+  const result = await request('messages', undefined, alice, { after: '3' });
+  assert.equal(result.status, 200);
+  assert.deepEqual(result.body.messages, []);
+  assert.deepEqual(storageCommands.map(cmd => cmd[0]), ['GET', 'HGETALL']);
+  storageCommands.length = 0;
+  await request('inbox', undefined, { owner: true });
+  assert.ok(!storageCommands.some(cmd => cmd[0] === 'ZREMRANGEBYSCORE'));
+});
+test('only the owner can delete a thread; deletion removes messages, session and pending pushes', async () => {
+  const conversation = alice.conversation.id;
+  assert.equal((await request('delete', { conversation }, alice)).status, 403);
+  assert.equal((await request('delete', { conversation })).status, 401);
+  assert.equal((await request('delete', { conversation }, { owner: true, headers: { Origin: 'https://evil.example' } })).status, 403);
+  const { saveMessage } = require('../server/store');
+  const id = randomUUID();
+  await saveMessage(conversation, { id, sender: 'visitor', text: 'Pending push', at: Date.now() });
+  assert.equal(await redis('EXISTS', key(`job:${conversation}:${id}`)), 1);
+  assert.equal((await request('delete', { conversation }, { owner: true })).status, 200);
+  for (const name of [`conversation:${conversation}`, `messages:${conversation}`, `ids:${conversation}`, `job:${conversation}:${id}`]) {
+    assert.equal(await redis('EXISTS', key(name)), 0);
+  }
+  assert.equal(await redis('ZSCORE', key('outbox'), `${conversation}:${id}`), null);
+  assert.equal((await request('messages', undefined, alice)).status, 401);
+  assert.equal((await request('send', { id, text: 'Retry' }, alice)).status, 401);
+  assert.ok(!(await request('inbox', undefined, { owner: true })).body.conversations.some(item => item.id === conversation));
+  assert.equal((await request('messages', undefined, bob)).status, 200);
+  assert.equal((await request('delete', { conversation }, { owner: true })).status, 200);
+});
+test('an in-flight failed push cannot recreate a deleted thread job', async () => {
+  const { saveMessage, deleteConversation } = require('../server/store');
+  const conversation = bob.conversation.id;
+  // Older conversations have no reverse session reference.
+  await redis('HDEL', key(`conversation:${conversation}`), 'session');
+  const id = randomUUID();
+  await request('subscribe', { endpoint: 'https://web.push.apple.com/test' }, { owner: true });
+  await saveMessage(conversation, { id, sender: 'visitor', text: 'Race', at: Date.now() });
+  pushStatus = 503;
+  onPush = () => deleteConversation(conversation);
+  try { await drainOutbox(); } finally { onPush = null; }
+  assert.equal(await redis('EXISTS', key(`job:${conversation}:${id}`)), 0);
+  assert.equal(await redis('ZSCORE', key('outbox'), `${conversation}:${id}`), null);
+  assert.equal((await request('messages', undefined, bob)).status, 404);
+  assert.equal((await request('send', { id: randomUUID(), text: 'Old session' }, bob)).status, 404);
 });
 test('cron is authenticated; logout revokes the session', async () => {
   assert.equal((await request('cron')).status, 401);

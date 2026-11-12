@@ -4,6 +4,7 @@ const page = document.body.dataset.page;
 const owner = page === 'owner';
 const sessionKey = 'ishtiaq-chat-session-v1';
 let session, selected, sequence = 0, pollTimer, polling = false, sending = false, generation = 0;
+let idlePolls = 0, lastInboxLoad = 0;
 let pendingMessage, registration, pushSubscription, inboxPages = 1, signedIn = false, inboxItems = [], inboxHasMore = false;
 // Keep the shell inside the visible area when a mobile keyboard pans or resizes it.
 let stickToBottom = true, viewportFrame;
@@ -87,6 +88,7 @@ function fail(error, target = 'connection') {
   if (target === 'send-status') $('send-status').dataset.error = 'true';
 }
 function showEntry() {
+  lastInboxLoad = 0; display('no-conversations', false);
   signedIn = false;
   document.body.classList.remove('chat-active');
   display('mobile-conversations', false);
@@ -150,8 +152,12 @@ async function loadMessages() {
     setThread(result.conversation);
     appendMessages(result.messages);
   } while (result.more);
-  if (owner && sequence && document.visibilityState === 'visible') {
+  if (owner && sequence && result.conversation.unread && document.visibilityState === 'visible') {
     await api('read', { conversation: selected.id, sequence });
+    if (current !== generation) return;
+    selected.unread = false;
+    inboxItems = inboxItems.map(item => item.id === selected.id ? { ...item, unread: false } : item);
+    renderInbox(inboxItems);
   }
 }
 function renderInbox(items) {
@@ -171,6 +177,7 @@ function renderInbox(items) {
   const focused = list.contains(document.activeElement) ? document.activeElement.dataset.id : null;
   list.replaceChildren();
   display('inbox-empty', items.length === 0);
+  display('no-conversations', items.length === 0);
   for (const item of items) {
     const button = document.createElement('button'); button.className = 'chat-conversation'; button.dataset.id = item.id;
     button.setAttribute('aria-current', String(selected?.id === item.id));
@@ -187,6 +194,7 @@ async function chooseConversation(item) {
   if ($('message').value.trim() && !confirm('Discard the draft for this conversation?')) {
     $('conversation-picker').value = selected.id; return;
   }
+  idlePolls = 0;
   generation++; sequence = 0; pendingMessage = null; $('message').value = ''; status('send-status', '');
   $('messages').querySelectorAll('article, .chat-day').forEach(node => node.remove()); display('empty', true);
   setThread(item); renderInbox(inboxItems);
@@ -208,6 +216,7 @@ async function loadInbox() {
     if (!result.more) break;
   }
   if (current !== generation) return;
+  lastInboxLoad = Date.now();
   showWorkspace();
   inboxHasMore = result.more;
   display('more', result.more); renderInbox(items);
@@ -215,21 +224,26 @@ async function loadInbox() {
 }
 async function poll() {
   clearTimeout(pollTimer);
-  if (polling || document.visibilityState === 'hidden' || !signedIn) return;
+  if (polling || document.visibilityState === 'hidden' || !navigator.onLine || !signedIn) return;
   polling = true;
   try {
-    if (owner) await loadInbox();
+    const before = sequence;
+    if (owner && Date.now() - lastInboxLoad >= 60000) await loadInbox();
     await loadMessages();
+    idlePolls = sequence === before ? idlePolls + 1 : 0;
     status('connection', 'Messages up to date');
   } catch (error) {
     if (error.status === 401 || (!owner && error.status === 404)) {
       showEntry();
       if (!owner) { session = null; try { localStorage.removeItem(sessionKey); } catch {} }
       fail(error, 'entry-status');
-    } else fail(error);
+    } else if (owner && error.status === 404) {
+      clearThread(); lastInboxLoad = 0;
+      try { await loadInbox(); } catch (refreshError) { fail(refreshError); }
+    } else { idlePolls++; fail(error); }
   } finally {
     polling = false;
-    if (signedIn && document.visibilityState !== 'hidden') pollTimer = setTimeout(poll, 10000);
+    if (signedIn && document.visibilityState !== 'hidden') pollTimer = setTimeout(poll, Math.min(60000, 10000 * (idlePolls + 1)));
   }
 }
 
@@ -261,6 +275,7 @@ $('compose')?.addEventListener('submit', async event => {
   if (sending || !selected) return;
   const text = $('message').value.trim();
   if (!text) return;
+  idlePolls = 0; lastInboxLoad = 0;
   sending = true; $('send').disabled = true; $('compose').setAttribute('aria-busy', 'true'); status('send-status', 'Sending…');
   // Keep the ID after a timeout so an acknowledged-but-lost response cannot
   // create a duplicate when the visitor presses Send again.
@@ -273,6 +288,7 @@ $('compose')?.addEventListener('submit', async event => {
     if ($('message').value.trim() === text) $('message').value = '';
     pendingMessage = null; sizeComposer(); stickToBottom = true; status('send-status', 'Sent.');
     await loadMessages();
+    clearTimeout(pollTimer); pollTimer = setTimeout(poll, 10000);
   } catch (error) { if (current === generation) fail(error, 'send-status'); }
   finally { sending = false; $('compose').setAttribute('aria-busy', 'false'); sizeComposer(); }
 });
@@ -290,6 +306,24 @@ $('block')?.addEventListener('click', async () => {
   try { await api('block', { conversation: selected.id, blocked: !selected.blocked }); selected.blocked = !selected.blocked; setThread(selected); await loadInbox(); }
   catch (error) { fail(error); } finally { $('block').disabled = false; }
 });
+function clearThread() {
+  generation++; selected = null; sequence = 0; pendingMessage = null;
+  $('messages').querySelectorAll('article, .chat-day').forEach(node => node.remove());
+  $('message').value = ''; status('send-status', '');
+  display('thread', false); display('empty', true); display('latest', false);
+  stickToBottom = true;
+}
+$('delete-thread')?.addEventListener('click', async () => {
+  if (!selected || sending || !confirm(`Permanently delete the conversation with ${selected.name}? All messages will be removed for both of you. This cannot be undone.`)) return;
+  const id = selected.id;
+  $('delete-thread').disabled = true;
+  try {
+    await api('delete', { conversation: id });
+    if (selected?.id === id) clearThread();
+    lastInboxLoad = 0; await loadInbox(); await loadMessages();
+  } catch (error) { fail(error); }
+  finally { $('delete-thread').disabled = false; }
+});
 $('logout')?.addEventListener('click', async () => {
   try {
     // Remove this device before dropping the credential needed to unregister it.
@@ -297,7 +331,7 @@ $('logout')?.addEventListener('click', async () => {
       await api('unsubscribe', { endpoint: pushSubscription.endpoint });
       await pushSubscription.unsubscribe(); pushSubscription = null;
     }
-    await api('logout', {}); selected = null; sequence = 0;
+    await api('logout', {}); lastInboxLoad = 0; selected = null; sequence = 0;
     $('messages').querySelectorAll('article, .chat-day').forEach(node => node.remove()); $('message').value = ''; showEntry();
   } catch (error) { fail(error); }
 });
@@ -354,9 +388,10 @@ $('install')?.addEventListener('click', async () => {
   status('install-status', result.outcome === 'accepted' ? 'Installation requested. Open the app to sign in.' : 'You can install later from your browser menu.');
 });
 window.addEventListener('appinstalled', () => { display('install', false); status('install-status', 'App installed. Open your inbox to enable notifications.'); });
-document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') poll(); else clearTimeout(pollTimer); });
-window.addEventListener('online', poll);
-window.addEventListener('offline', () => status('connection', 'You’re offline. Reconnect to send and receive messages.'));
+function resumePolling() { idlePolls = 0; lastInboxLoad = 0; poll(); }
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') resumePolling(); else clearTimeout(pollTimer); });
+window.addEventListener('online', resumePolling);
+window.addEventListener('offline', () => { clearTimeout(pollTimer); status('connection', 'You’re offline. Reconnect to send and receive messages.'); });
 
 // Chat does not wait for installation: a failed service worker must never block
 // the visitor form or the owner's sign-in.

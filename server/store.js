@@ -54,6 +54,26 @@ if seq > old then redis.call('HSET', KEYS[1], 'read', seq) end
 return 1
 `;
 
+// Messages and their retry IDs are bounded to 2,000 per conversation.
+// Delete atomically with sending so a concurrent send cannot recreate the thread.
+const deleteScript = `
+local ids = redis.call('HKEYS', KEYS[3])
+for _, id in ipairs(ids) do
+  local job = ARGV[1] .. ':' .. id
+  redis.call('DEL', ARGV[2] .. 'job:' .. job)
+  redis.call('ZREM', KEYS[5], job)
+end
+local session = redis.call('HGET', KEYS[1], 'session')
+if session then redis.call('DEL', ARGV[2] .. 'session:' .. session) end
+redis.call('DEL', KEYS[1], KEYS[2], KEYS[3])
+redis.call('ZREM', KEYS[4], ARGV[1])
+return 1
+`;
+async function deleteConversation(id) {
+  return redis('EVAL', deleteScript, 5, key(`conversation:${id}`), key(`messages:${id}`),
+    key(`ids:${id}`), key('conversations'), key('outbox'), id, PREFIX);
+}
+
 async function rate(identity, limit, seconds) {
   return Number(await redis('EVAL', rateScript, 1, key(`rate:${identity}`), seconds)) <= limit;
 }
@@ -71,4 +91,4 @@ async function saveMessage(id, message) {
     key(`ids:${id}`), key('conversations'), key(`job:${job}`), key('outbox'),
     message.id, message.sender, message.text, message.at, id, RETENTION, job);
 }
-module.exports = { redis, key, rate, conversation, saveMessage, readScript, RETENTION, messageScript };
+module.exports = { deleteConversation, redis, key, rate, conversation, saveMessage, readScript, RETENTION, messageScript };
