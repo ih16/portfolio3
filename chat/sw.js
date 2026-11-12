@@ -1,5 +1,5 @@
 'use strict';
-const CACHE = 'ishtiaq-chat-shell-v12';
+const CACHE = 'ishtiaq-chat-shell-v15';
 const SHELL = ['/chat', '/chat/inbox', '/chat/install', '/styles.css', '/chat/chat.css', '/chat/app.js', '/chat/icon-192.png', '/chat/icon-512.png'];
 self.addEventListener('install', event => event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(SHELL)).then(() => self.skipWaiting())));
 self.addEventListener('activate', event => event.waitUntil(

@@ -3,6 +3,11 @@ const $ = id => document.getElementById(id);
 const page = document.body.dataset.page;
 const owner = page === 'owner';
 const sessionKey = 'ishtiaq-chat-session-v1';
+const notificationPreferenceKey = 'ishtiaq-chat-notifications-v1';
+let notificationTask, signingOut = false;
+function wantsNotifications() {
+  try { return localStorage.getItem(notificationPreferenceKey) !== 'disabled'; } catch { return true; }
+}
 let session, selected, sequence = 0, pollTimer, polling = false, sending = false, generation = 0;
 let idlePolls = 0, lastInboxLoad = 0, presenceTimer;
 let pendingMessage, registration, pushSubscription, inboxPages = 1, signedIn = false, inboxItems = [];
@@ -101,15 +106,17 @@ function dismissToast() {
   display('inbox-toast', false);
   status('toast-message', '');
 }
-function showToast(message) {
+function showToast(message, state = 'success') {
   clearTimeout(toastTimer);
   display('inbox-toast', true);
+  $('inbox-toast').dataset.state = state;
   status('toast-message', message);
-  toastTimer = setTimeout(dismissToast, 3500);
+  if (state !== 'loading') toastTimer = setTimeout(dismissToast, 3500);
 }
 $('toast-dismiss')?.addEventListener('click', dismissToast);
 function showEntry() {
   dismissToast();
+  display('notification-prompt', false);
   $('visitor-dialog')?.close();
   clearTimeout(presenceTimer);
   lastInboxLoad = 0; document.body.classList.remove('chat-thread-open');
@@ -152,17 +159,33 @@ function appendMessages(messages) {
     }
     const article = document.createElement('article');
     article.dataset.day = day;
+    article.dataset.sequence = message.sequence;
     article.className = 'chat-message' + ((owner ? message.sender === 'owner' : message.sender === 'visitor') ? ' chat-message--mine' : '');
     article.setAttribute('aria-label', message.sender === 'owner' ? 'Ishtiaq' : selected.name);
     const text = document.createElement('p'); text.textContent = message.text;
     const time = document.createElement('time'); time.dateTime = new Date(message.at).toISOString();
     time.textContent = date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
     time.title = date.toLocaleString();
-    article.append(text, time); box.append(article);
+    const meta = document.createElement('div'); meta.className = 'chat-message-meta'; meta.append(time);
+    if (article.classList.contains('chat-message--mine')) {
+      const receipt = document.createElement('span'); receipt.className = 'chat-receipt'; meta.append(receipt);
+    }
+    article.append(text, meta); box.append(article);
     sequence = message.sequence;
   }
+  updateReceipts();
   if (atBottom || first) jumpToLatest();
   else display('latest', true);
+}
+function updateReceipts() {
+  const read = (owner ? selected?.visitorRead : selected?.ownerRead) || 0;
+  for (const receipt of $('messages').querySelectorAll('.chat-receipt')) {
+    const seen = Number(receipt.closest('article').dataset.sequence) <= read;
+    receipt.textContent = seen ? '✓✓' : '✓';
+    receipt.classList.toggle('is-read', seen);
+    receipt.setAttribute('aria-label', seen ? 'Read' : 'Delivered');
+    receipt.title = seen ? 'Read' : 'Delivered to server';
+  }
 }
 function showPresence(until) {
   clearTimeout(presenceTimer);
@@ -187,9 +210,12 @@ async function loadMessages() {
     inboxItems = inboxItems.map(item => item.id === selected.id ? { ...selected } : item);
     renderInbox(inboxItems);
   }
-  if (owner && sequence && result.conversation.unread && document.visibilityState === 'visible') {
+  const readPosition = (owner ? selected.ownerRead : selected.visitorRead) || 0;
+  if (sequence > readPosition && document.visibilityState === 'visible') {
     await api('read', { conversation: selected.id, sequence });
     if (current !== generation) return;
+    if (!owner) { selected.visitorRead = sequence; return; }
+    selected.ownerRead = sequence;
     selected.unread = false; selected.unreadCount = 0;
     inboxItems = inboxItems.map(item => item.id === selected.id ? { ...selected, unread: false, unreadCount: 0 } : item);
     renderInbox(inboxItems);
@@ -340,13 +366,13 @@ async function loadInbox() {
 }
 async function poll(force = false) {
   clearTimeout(pollTimer);
-  if (polling || document.visibilityState === 'hidden' || !navigator.onLine || !signedIn) return;
+  if (signingOut || polling || document.visibilityState === 'hidden' || !navigator.onLine || !signedIn) return;
   polling = true;
   if ($('refresh-inbox')) {
     $('refresh-inbox').disabled = true;
     $('refresh-inbox').setAttribute('aria-busy', 'true');
   }
-  if (force) { lastInboxLoad = 0; idlePolls = 0; status('connection', 'Refreshing…'); }
+  if (force) { lastInboxLoad = 0; idlePolls = 0; showToast('Refreshing…', 'loading'); }
   try {
     const before = sequence;
     if (owner && Date.now() - lastInboxLoad >= 60000) await loadInbox();
@@ -363,8 +389,8 @@ async function poll(force = false) {
       if (owner) fail(error, 'entry-status'); else status('entry-status', '');
     } else if (owner && error.status === 404) {
       clearThread(); lastInboxLoad = 0;
-      try { await loadInbox(); } catch (refreshError) { fail(refreshError); }
-    } else { idlePolls++; fail(error); }
+      try { await loadInbox(); if (force) showToast('Inbox refreshed'); } catch (refreshError) { if (force) showToast(refreshError.message, 'error'); else fail(refreshError); }
+    } else { idlePolls++; if (force) showToast(error.message, 'error'); else fail(error); }
   } finally {
     polling = false;
     if ($('refresh-inbox')) {
@@ -376,7 +402,7 @@ async function poll(force = false) {
 }
 
 $('refresh-inbox')?.addEventListener('click', () => {
-  if (!navigator.onLine) { status('connection', 'You’re offline. Reconnect to refresh.'); return; }
+  if (!navigator.onLine) { showToast('You’re offline. Reconnect to refresh.', 'error'); return; }
   poll(true);
 });
 
@@ -386,7 +412,7 @@ $('join')?.addEventListener('submit', async event => {
   try {
     // Check persistence before creating a session the visitor cannot resume.
     localStorage.setItem('chat-storage-check', '1'); localStorage.removeItem('chat-storage-check');
-    session = await api('session', { name: $('name').value.trim() });
+    session = await api('session', { name: $('name').value.trim(), retentionSeconds: Number($('retention').value) });
     localStorage.setItem(sessionKey, JSON.stringify(session));
     selected = null; sequence = 0; generation++;
     $('messages').querySelectorAll('article, .chat-day').forEach(node => node.remove()); display('empty', true);
@@ -460,15 +486,18 @@ async function deleteThread(item, button) {
 }
 $('delete-thread')?.addEventListener('click', () => deleteThread(selected, $('delete-thread')));
 $('logout')?.addEventListener('click', async () => {
+  if (signingOut) return;
+  signingOut = true; generation++; clearTimeout(pollTimer); $('logout').disabled = true;
   try {
-    // Remove this device before dropping the credential needed to unregister it.
-    if (pushSubscription) {
-      await api('unsubscribe', { endpoint: pushSubscription.endpoint });
-      await pushSubscription.unsubscribe(); pushSubscription = null;
-    }
-    await api('logout', {}); lastInboxLoad = 0; selected = null; sequence = 0;
+    if (notificationTask) { try { await notificationTask; } catch {} }
+    if (!pushSubscription && registration) pushSubscription = await registration.pushManager?.getSubscription();
+    // Revoke the session, presence and server subscription together.
+    await api('logout', pushSubscription ? { endpoint: pushSubscription.endpoint } : {});
+    if (pushSubscription) { try { await pushSubscription.unsubscribe(); } catch {} pushSubscription = null; }
+    lastInboxLoad = 0; selected = null; sequence = 0;
     $('messages').querySelectorAll('article, .chat-day').forEach(node => node.remove()); $('message').value = ''; showEntry();
   } catch (error) { fail(error); }
+  finally { signingOut = false; $('logout').disabled = false; if (signedIn) poll(); }
 });
 
 async function setupWorker() {
@@ -480,37 +509,68 @@ async function setupWorker() {
     })]);
   }
 }
-async function syncNotifications() {
+function notificationControls(busy) {
+  $('notifications').disabled = busy;
+  $('notification-enable').disabled = busy;
+}
+async function updateNotifications() {
+  if (!signedIn || signingOut) return;
   if (!registration || !('PushManager' in window) || !('Notification' in window)) {
     status('notification-status', 'Notifications aren’t available here. On iPhone or iPad, install and open the app from your home screen.');
-    display('notifications', false); return;
+    display('notifications', false); display('notification-prompt', false); return;
   }
+  display('notifications', true);
   pushSubscription = await registration.pushManager.getSubscription();
-  if (pushSubscription) await api('subscribe', { endpoint: pushSubscription.endpoint });
-  status('notifications', pushSubscription ? 'Disable notifications' : 'Enable notifications');
-  status('notification-status', pushSubscription ? 'Notifications are enabled on this device.' : 'Enable notifications to hear about new messages when the app is closed.');
-}
-$('notifications')?.addEventListener('click', async () => {
-  $('notifications').disabled = true;
-  try {
-    if (!registration) throw new Error('The app is still getting ready. Try again in a moment.');
-    if (pushSubscription) {
-      await api('unsubscribe', { endpoint: pushSubscription.endpoint });
-      await pushSubscription.unsubscribe(); pushSubscription = null;
-    } else {
-      // Ask directly from the tap; iOS requires a user gesture for permission.
-      const permission = await Notification.requestPermission();
-      if (permission !== 'granted') throw new Error('Notifications are blocked. Allow them in your browser or device settings, then try again.');
+  const enabled = wantsNotifications();
+  if (!signedIn || signingOut) return;
+  if (!enabled && pushSubscription) {
+    await api('unsubscribe', { endpoint: pushSubscription.endpoint });
+    await pushSubscription.unsubscribe(); pushSubscription = null;
+  }
+  if (enabled && Notification.permission === 'granted') {
+    if (!pushSubscription) {
       const { publicKey } = await api('config');
+      if (!signedIn || signingOut) return;
       const bytes = Uint8Array.from(atob(publicKey.replace(/-/g, '+').replace(/_/g, '/')), char => char.charCodeAt(0));
       pushSubscription = await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: bytes });
-      try { await api('subscribe', { endpoint: pushSubscription.endpoint }); }
-      catch (error) { await pushSubscription.unsubscribe(); pushSubscription = null; throw error; }
     }
-    await syncNotifications();
-  } catch (error) { fail(error, 'notification-status'); }
-  finally { $('notifications').disabled = false; }
-});
+    if (!signedIn || signingOut) return;
+    await api('subscribe', { endpoint: pushSubscription.endpoint });
+  }
+  status('notifications', pushSubscription ? 'Disable notifications' : 'Enable notifications');
+  status('notification-status', pushSubscription ? 'Notifications are enabled on this device.' :
+    Notification.permission === 'denied' ? 'Notifications are blocked in your browser settings.' :
+    enabled ? 'Allow notifications to hear about new messages.' : 'Notifications are disabled on this device.');
+  display('notification-prompt', enabled && Notification.permission === 'default' && !pushSubscription);
+}
+function syncNotifications() {
+  if (notificationTask) return notificationTask;
+  notificationControls(true);
+  notificationTask = updateNotifications().finally(() => { notificationControls(false); notificationTask = null; });
+  return notificationTask;
+}
+function changeNotifications(enable) {
+  if (notificationTask || !signedIn || signingOut) return;
+  notificationControls(true);
+  notificationTask = (async () => {
+    try {
+      if (!registration || !('Notification' in window)) throw new Error('Notifications are not ready on this device.');
+      if (enable) {
+        // The first permission request stays directly inside the user's tap.
+        const permission = Notification.permission === 'granted' ? 'granted' : await Notification.requestPermission();
+        if (permission !== 'granted') throw new Error('Allow notifications in your browser settings to enable them.');
+      }
+      if (!signedIn || signingOut) return;
+      localStorage.setItem(notificationPreferenceKey, enable ? 'enabled' : 'disabled');
+      await updateNotifications();
+      showToast(enable ? 'Notifications enabled' : 'Notifications disabled');
+    } catch (error) {
+      if (signedIn && !signingOut) { fail(error, 'notification-status'); showToast(error.message, 'error'); }
+    }
+  })().finally(() => { notificationControls(false); notificationTask = null; });
+}
+$('notifications')?.addEventListener('click', () => changeNotifications(!pushSubscription));
+$('notification-enable')?.addEventListener('click', () => changeNotifications(true));
 let installPrompt;
 window.addEventListener('beforeinstallprompt', event => {
   event.preventDefault(); installPrompt = event; display('install', true);

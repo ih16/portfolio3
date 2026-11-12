@@ -63,12 +63,14 @@ async function handler(req, res) {
       requireValue(typeof data.name === 'string' && data.name.trim().length >= 1 && data.name.trim().length <= 60, 400, 'Use a name between 1 and 60 characters.');
       requireValue(await rate(`session:${ip}`, 10, 3600), 429, 'Too many new chats. Try again in an hour.');
       requireValue(await rate('sessions-global', 500, 86400), 429, 'Chat is busy today. Please email me instead.');
+      const retention = data.retentionSeconds ?? 30 * 24 * 60 * 60;
+      requireValue([43200, 86400, 604800, 2592000].includes(retention), 400, 'Choose an auto-delete period between 12 hours and 30 days.');
       const token = randomBytes(32).toString('hex');
       const id = randomUUID();
       const now = Date.now();
-      await redis('EVAL', `redis.call('SET', KEYS[1], ARGV[1], 'EX', ARGV[4]); redis.call('HSET', KEYS[2], 'name', ARGV[2], 'updated', ARGV[3], 'sequence', 0, 'session', ARGV[5], 'created', ARGV[3], 'visitorInfo', ARGV[6]); redis.call('EXPIRE', KEYS[2], ARGV[4]); return 1`,
-        2, key(`session:${hash(token)}`), key(`conversation:${id}`), id, data.name.trim(), now, RETENTION, hash(token), JSON.stringify(visitorInfo(req, now)));
-      return respond(201, { token, conversation: { id, name: data.name.trim() } });
+      await redis('EVAL', `redis.call('SET', KEYS[1], ARGV[1], 'EX', ARGV[4]); redis.call('HSET', KEYS[2], 'name', ARGV[2], 'updated', ARGV[3], 'sequence', 0, 'session', ARGV[5], 'created', ARGV[3], 'visitorInfo', ARGV[6], 'retention', ARGV[4]); redis.call('EXPIRE', KEYS[2], ARGV[4]); return 1`,
+        2, key(`session:${hash(token)}`), key(`conversation:${id}`), id, data.name.trim(), now, retention, hash(token), JSON.stringify(visitorInfo(req, now)));
+      return respond(201, { token, conversation: { id, name: data.name.trim(), retentionSeconds: retention } });
     }
     if (action === 'login' && req.method === 'POST') {
       requireValue(await rate(`login:${ip}`, 10, 900), 429, 'Too many sign-in attempts. Try again in 15 minutes.');
@@ -80,14 +82,21 @@ async function handler(req, res) {
     }
     const user = await identity(req, url.searchParams.get('scope') === 'owner');
     if (action === 'logout' && req.method === 'POST' && user.owner) {
-      await redis('DEL', key(`owner:${hash(user.token)}`));
+      requireValue(data.endpoint === undefined || (typeof data.endpoint === 'string' && validEndpoint(data.endpoint)), 400, 'Invalid push subscription.');
+      await redis('EVAL', `if ARGV[1] ~= '' then redis.call('HDEL', KEYS[3], ARGV[1]) end
+        return redis.call('DEL', KEYS[1], KEYS[2])`, 3,
+        key(`owner:${hash(user.token)}`), key('owner-online'), key('subscriptions'), data.endpoint ? subscriptionId(data.endpoint) : '');
       res.setHeader('Set-Cookie', cookie('', req, true));
       return respond(200, { ok: true });
     }
     if (action === 'inbox' && req.method === 'GET' && user.owner) {
       const offset = Number(url.searchParams.get('offset') || 0);
       requireValue(Number.isSafeInteger(offset) && offset >= 0 && offset <= 100000, 400, 'Invalid offset.');
-      await redis('SET', key('owner-online'), Date.now() + 15 * 60 * 1000, 'EX', 900);
+      // Recheck atomically: a refresh already in flight must not restore presence after logout.
+      const active = await redis('EVAL', `if redis.call('EXISTS', KEYS[1]) == 0 then return 0 end
+        redis.call('SET', KEYS[2], ARGV[1], 'EX', 900); return 1`,
+        2, key(`owner:${hash(user.token)}`), key('owner-online'), Date.now() + 15 * 60 * 1000);
+      requireValue(active, 401, 'Sign in to your inbox.');
       const ids = await redis('ZREVRANGEBYSCORE', key('conversations'), '+inf', `(${Date.now() - RETENTION * 1000}`, 'LIMIT', offset, 50);
       const items = (await Promise.all(ids.map(conversation))).filter(Boolean);
       return respond(200, { conversations: items, more: ids.length === 50 });
@@ -125,9 +134,9 @@ async function handler(req, res) {
       const messages = after < item.sequence ? await redis('LRANGE', key(`messages:${id}`), after, after + 99) : [];
       return respond(200, { conversation: item, onlineUntil: user.onlineUntil > Date.now() ? user.onlineUntil : 0, messages: messages.map(JSON.parse), more: after + messages.length < item.sequence });
     }
-    if (action === 'read' && req.method === 'POST' && user.owner) {
+    if (action === 'read' && req.method === 'POST') {
       requireValue(Number.isSafeInteger(data.sequence) && data.sequence >= 0, 400, 'Invalid read position.');
-      await redis('EVAL', readScript, 2, key(`conversation:${id}`), key(`messages:${id}`), data.sequence);
+      await redis('EVAL', readScript, 2, key(`conversation:${id}`), key(`messages:${id}`), data.sequence, user.owner ? 'owner' : 'visitor');
       return respond(200, { ok: true });
     }
     if (action === 'block' && req.method === 'POST' && user.owner) {

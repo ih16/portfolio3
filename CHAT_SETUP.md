@@ -72,23 +72,31 @@ Vercel Node runtime: <https://vercel.com/docs/functions/runtimes/node-js>
 No app-store account, native build or always-on server is needed. Install and
 notification permission are separate actions. The owner can register up to five
 notification devices. Signing out removes that device's push subscription.
-Messages are still available if notification permission is denied.
+Notification preferences are remembered per browser/device and default to enabled.
+With existing browser permission, sign-in automatically restores the subscription.
+First-time permission still requires tapping Enable notifications. Explicitly disabling
+notifications is remembered across reloads and sign-ins. Signing out removes the
+subscription without changing that preference. Messages remain available if permission
+is denied.
 
 ## Delivery, retries and limits
 
 - Visitors resume using a random session secret in local storage. Names are
   display labels, not authentication. The server stores only the secret's hash.
-  Clearing browser storage loses access. Sessions last 90 days from creation.
+  Clearing browser storage loses access. New sessions default to 30 days of inactivity;
+  visitors can choose 7 days, 24 hours or 12 hours when starting a chat.
 - Owner sessions use an HttpOnly, SameSite=Strict, Secure production cookie and
   expire after 30 days. Keep the generated high-entropy password. To revoke all
   owner sessions, delete only keys matching `portfolio-chat:v1:owner:*` in this
   app's Redis database; rotating the password alone does not revoke sessions.
-- Message history expires after 90 days without a new message in a conversation.
+- The session, message history and retry IDs expire after the selected inactivity
+  period. Either person sending a new message restarts that timer. Existing chats
+  keep their previous 90-day retention.
   There is a limit of 2,000 messages per conversation and 2,000 characters per
   message. The inbox loads 50 conversations at a time.
 - The active chat fills the mobile viewport, with a fixed composer and only the
   message history scrolling. Short histories align to the bottom. The mobile
-  inbox uses a conversation picker instead of a second scrolling list.
+  inbox opens on a separate conversation list.
 - Open pages poll every 10 seconds; hidden pages stop polling. Messages missed
   while closed are fetched on return. Visitors need to return to the same
   browser for replies; only the owner's devices receive push notifications.
@@ -181,7 +189,9 @@ than 15 minutes old. The existing visible-app refresh renews a 900-second Redis
 key; visitor requests read presence together with their session using MGET.
 There is no last-seen display. The indicator clears on expiry, including between
 polls. Closing the inbox deliberately leaves Online visible for the remaining
-window; this indicates recent app activity, not current device activity.
+window; this indicates recent app activity, not current device activity. Explicit
+sign-out clears presence immediately on the server; visitors see the change on
+their next poll. Another signed-in device can renew presence while active.
 
 ## Visitor details
 

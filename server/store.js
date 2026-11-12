@@ -46,6 +46,7 @@ if ARGV[2] == 'visitor' and redis.call('HGET', KEYS[1], 'blocked') == '1' then r
 local count = tonumber(redis.call('HGET', KEYS[1], 'sequence') or '0')
 if count >= 2000 then return 'full' end
 ${summaryScript}
+local retention = tonumber(redis.call('HGET', KEYS[1], 'retention') or ARGV[6])
 local seq = redis.call('HINCRBY', KEYS[1], 'sequence', 1)
 local message = cjson.encode({id=ARGV[1], sender=ARGV[2], text=ARGV[3], at=tonumber(ARGV[4]), sequence=seq})
 redis.call('RPUSH', KEYS[2], message)
@@ -56,18 +57,25 @@ if ARGV[2] == 'visitor' then
     redis.call('HSET', KEYS[1], 'lastVisitor', seq, 'visitorInfo', ARGV[8])
   else redis.call('HSET', KEYS[1], 'lastVisitor', seq) end
   redis.call('HINCRBY', KEYS[1], 'unreadCount', 1)
-  redis.call('SET', KEYS[5], '{}', 'EX', ARGV[6])
+  redis.call('SET', KEYS[5], '{}', 'EX', retention)
   redis.call('ZADD', KEYS[6], ARGV[4], ARGV[7])
 end
 redis.call('ZADD', KEYS[4], ARGV[4], ARGV[5])
-for i = 1, 3 do redis.call('EXPIRE', KEYS[i], ARGV[6]) end
+for i = 1, 3 do redis.call('EXPIRE', KEYS[i], retention) end
+local session = redis.call('HGET', KEYS[1], 'session')
+if session then redis.call('EXPIRE', ARGV[9] .. 'session:' .. session, retention) end
 return message
 `;
 
 const readScript = `
 if redis.call('EXISTS', KEYS[1]) == 0 then return 0 end
 local seq = math.min(tonumber(ARGV[1]), tonumber(redis.call('HGET', KEYS[1], 'sequence') or '0'))
-local old = tonumber(redis.call('HGET', KEYS[1], 'read') or '0')
+local field = ARGV[2] == 'visitor' and 'visitorRead' or 'read'
+local old = tonumber(redis.call('HGET', KEYS[1], field) or '0')
+if field == 'visitorRead' then
+  if seq > old then redis.call('HSET', KEYS[1], field, seq) end
+  return 1
+end
 if seq > old then
   local unread = 0
   if seq < tonumber(redis.call('HGET', KEYS[1], 'lastVisitor') or '0') then
@@ -114,6 +122,8 @@ async function conversation(id) {
     return conversation(id);
   }
   return { id, name: item.name, updated: Number(item.updated), sequence: Number(item.sequence || 0),
+    retentionSeconds: Number(item.retention || RETENTION),
+    ownerRead: Number(item.read || 0), visitorRead: Number(item.visitorRead || 0),
     unread: Number(item.unreadCount) > 0, unreadCount: Number(item.unreadCount),
     latestText: item.latestText || '', latestSender: item.latestSender || '', blocked: item.blocked === '1' };
 }
@@ -121,6 +131,6 @@ async function saveMessage(id, message) {
   const job = `${id}:${message.id}`;
   return redis('EVAL', messageScript, 6, key(`conversation:${id}`), key(`messages:${id}`),
     key(`ids:${id}`), key('conversations'), key(`job:${job}`), key('outbox'),
-    message.id, message.sender, message.text, message.at, id, RETENTION, job, message.info ? JSON.stringify(message.info) : '');
+    message.id, message.sender, message.text, message.at, id, RETENTION, job, message.info ? JSON.stringify(message.info) : '', PREFIX);
 }
 module.exports = { deleteConversation, redis, key, rate, conversation, saveMessage, readScript, RETENTION, messageScript };

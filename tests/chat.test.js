@@ -11,7 +11,7 @@ let gateway, server, origin, cookie, alice, bob, signingKey;
 const originalFetch = global.fetch;
 const pushResults = [];
 const storageCommands = [];
-let pushStatus = 201, onPush;
+let pushStatus = 201, onPush, beforePresence;
 before(async () => {
   gateway = await bridge();
   process.env.UPSTASH_REDIS_REST_URL = `http://127.0.0.1:${gateway.address().port}`;
@@ -28,7 +28,12 @@ before(async () => {
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   origin = `http://127.0.0.1:${server.address().port}`; process.env.CHAT_ORIGIN = origin;
   global.fetch = async (url, options) => {
-    if (String(url) === process.env.UPSTASH_REDIS_REST_URL) storageCommands.push(JSON.parse(options.body));
+    if (String(url) === process.env.UPSTASH_REDIS_REST_URL) {
+      const cmd = JSON.parse(options.body); storageCommands.push(cmd);
+      if (beforePresence && cmd[0] === 'EVAL' && cmd[4] === key('owner-online')) {
+        const hook = beforePresence; beforePresence = null; await hook(cmd[3]);
+      }
+    }
     if (String(url).startsWith('https://web.push.apple.com/')) { pushResults.push(options); if (onPush) await onPush(); return new Response(null, { status: pushStatus }); }
     return originalFetch(url, options);
   };
@@ -56,6 +61,30 @@ test('separate sessions for identical names; anonymous access is denied', async 
   assert.equal((await request('messages')).status, 401);
   assert.equal((await request('inbox', undefined, { owner: true })).status, 401);
   assert.equal((await request('session', { name: '' })).status, 400);
+});
+test('auto-delete defaults to thirty days and both senders renew the chosen inactivity timer', async () => {
+  const { createHash } = require('node:crypto');
+  const defaultSession = (await request('session', { name: 'Default expiry' })).body;
+  assert.equal(defaultSession.conversation.retentionSeconds, 2592000);
+  assert.ok(await redis('TTL', key(`conversation:${defaultSession.conversation.id}`)) > 2591990);
+  assert.equal((await request('session', { name: 'Invalid expiry', retentionSeconds: 60 })).status, 400);
+  const visitor = (await request('session', { name: 'Short expiry', retentionSeconds: 43200 })).body;
+  const id = visitor.conversation.id;
+  const sessionKey = key(`session:${createHash('sha256').update(visitor.token).digest('hex')}`);
+  await request('send', { id: randomUUID(), text: 'Start timer' }, visitor);
+  const keys = [sessionKey, key(`conversation:${id}`), key(`messages:${id}`), key(`ids:${id}`)];
+  for (const name of keys) await redis('EXPIRE', name, 60);
+  await request('send', { id: randomUUID(), text: 'Reset visitor timer' }, visitor);
+  for (const name of keys) assert.ok(await redis('TTL', name) > 43190);
+  const login = await request('login', { password: process.env.CHAT_OWNER_PASSWORD });
+  cookie = login.headers.get('set-cookie').split(';')[0];
+  for (const name of keys) await redis('EXPIRE', name, 60);
+  await request('send', { conversation: id, id: randomUUID(), text: 'Reset owner timer' }, { owner: true });
+  for (const name of keys) assert.ok(await redis('TTL', name) > 43190);
+  for (const name of keys) await redis('PEXPIRE', name, 1);
+  await new Promise(resolve => setTimeout(resolve, 10));
+  assert.equal((await request('messages', undefined, visitor)).status, 401);
+  for (const name of keys) assert.equal(await redis('EXISTS', name), 0);
 });
 test('cross-origin writes and malformed messages are rejected', async () => {
   assert.equal((await request('session', { name: 'X' }, { headers: { Origin: 'https://evil.example' } })).status, 403);
@@ -244,9 +273,44 @@ test('an in-flight failed push cannot recreate a deleted thread job', async () =
   assert.equal((await request('messages', undefined, bob)).status, 404);
   assert.equal((await request('send', { id: randomUUID(), text: 'Old session' }, bob)).status, 404);
 });
+test('read receipts advance independently and visitors cannot mark another thread read', async () => {
+  const visitor = (await request('session', { name: 'Receipts' })).body;
+  const other = (await request('session', { name: 'Other receipts' })).body;
+  const id = visitor.conversation.id;
+  await request('send', { id: randomUUID(), text: 'Hello' }, visitor);
+  await request('send', { conversation: id, id: randomUUID(), text: 'Reply' }, { owner: true });
+  await request('read', { conversation: id, sequence: 1 }, { owner: true });
+  let result = (await request('messages', undefined, visitor)).body.conversation;
+  assert.equal(result.ownerRead, 1);
+  assert.equal(result.visitorRead, 0);
+  await request('read', { conversation: other.conversation.id, sequence: 999 }, visitor);
+  await request('read', { sequence: 0 }, visitor);
+  result = (await request('messages', undefined, visitor)).body.conversation;
+  assert.equal(result.visitorRead, 2);
+  assert.equal(result.ownerRead, 1);
+  assert.equal((await request('messages', undefined, other)).body.conversation.visitorRead, 0);
+  assert.equal((await request('read', { sequence: -1 }, visitor)).status, 400);
+});
+test('a refresh cannot restore online presence after its session is revoked', async () => {
+  const savedCookie = cookie;
+  try {
+    const login = await request('login', { password: process.env.CHAT_OWNER_PASSWORD });
+    cookie = login.headers.get('set-cookie').split(';')[0];
+    beforePresence = sessionKey => redis('DEL', sessionKey, key('owner-online'));
+    assert.equal((await request('inbox', undefined, { owner: true })).status, 401);
+    assert.equal(await redis('GET', key('owner-online')), null);
+  } finally { cookie = savedCookie; beforePresence = null; }
+});
 test('cron is authenticated; logout revokes the session', async () => {
   assert.equal((await request('cron')).status, 401);
   assert.equal((await request('cron', undefined, { headers: { Authorization: `Bearer ${process.env.CRON_SECRET}` } })).status, 200);
-  assert.equal((await request('logout', {}, { owner: true })).status, 200);
+  await request('inbox', undefined, { owner: true });
+  assert.ok(Number(await redis('GET', key('owner-online'))) > Date.now());
+  const endpoint = 'https://web.push.apple.com/logout-test';
+  await request('subscribe', { endpoint }, { owner: true });
+  assert.equal((await request('logout', { endpoint }, { owner: true })).status, 200);
+  assert.equal(await redis('GET', key('owner-online')), null);
+  const { subscriptionId } = require('../server/push');
+  assert.equal(await redis('HEXISTS', key('subscriptions'), subscriptionId(endpoint)), 0);
   assert.equal((await request('inbox', undefined, { owner: true })).status, 401);
 });
